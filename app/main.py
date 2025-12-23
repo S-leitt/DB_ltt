@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
+import uuid
 
 from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
@@ -8,7 +9,7 @@ from emails import Message
 from emails.smtp import SMTP
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from .config import get_settings
@@ -137,6 +138,53 @@ class TokenData(BaseModel):
     """Token数据模型"""
     username: str
     role: str
+
+class DBTableCounts(BaseModel):
+    """数据库表数据量"""
+    status: str
+    message: Optional[str] = None
+    table_counts: Dict[str, Any] = Field(default_factory=dict)
+
+class QuestionItem(BaseModel):
+    """题目数据项"""
+    guid: str
+    content: str
+    answer: str
+    score: float
+    id: Optional[int] = None
+    updated_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class QuestionUpsert(BaseModel):
+    """题目创建/更新负载"""
+    content: str
+    answer: str
+    score: float
+
+class QuestionTargetRequest(BaseModel):
+    """题目写入请求，包含目标数据库"""
+    question: QuestionUpsert
+    target_dbs: List[str]
+
+class QuestionDeleteRequest(BaseModel):
+    """删除题目请求"""
+    target_dbs: List[str]
+
+class SyncTask(BaseModel):
+    """同步任务模型"""
+    id: int
+    source_db: str
+    target_db: str
+    operation_type: str
+    event_type: str
+    sync_status: str
+    error_msg: Optional[str]
+    created_at: str
+
+    class Config:
+        from_attributes = True
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -1582,3 +1630,295 @@ def get_student_scores_report():
             }    
     
     return results
+
+# ---------------- 新版 API（供重构前端使用） ----------------
+
+def _collect_db_status_snapshot() -> Dict[str, DBTableCounts]:
+    """汇总数据库连接状态和表计数"""
+    results: Dict[str, DBTableCounts] = {}
+    tables = ['T_USERS', 'T_QUESTIONS', 'T_EXAMS', 'T_SCORES', 'T_SYNC_LOGS']
+
+    for db_name in engines.keys():
+        session = next(get_session(db_name))
+        try:
+            # 检查连接
+            if db_name == 'oracle':
+                session.execute(text("SELECT 1 FROM DUAL"))
+            else:
+                session.execute(text("SELECT 1"))
+
+            table_counts: Dict[str, Any] = {}
+            for table in tables:
+                try:
+                    result = session.execute(text(f"SELECT COUNT(*) FROM {table}"))
+                    table_counts[table] = result.scalar()
+                except Exception as exc:  # pragma: no cover - runtime protection
+                    table_counts[table] = f"ERROR: {exc}"
+
+            results[db_name] = DBTableCounts(
+                status="online",
+                message="连接成功",
+                table_counts=table_counts,
+            )
+        except Exception as exc:
+            results[db_name] = DBTableCounts(
+                status="offline",
+                message=str(exc),
+                table_counts={},
+            )
+        finally:
+            session.close()
+
+    return results
+
+
+def _fetch_questions_from_db(
+    db_name: str,
+    content: Optional[str],
+    min_score: Optional[float],
+    max_score: Optional[float],
+) -> List[Question]:
+    """根据条件获取题目列表"""
+    session = next(get_session(db_name))
+    try:
+        query = session.query(Question)
+        if content:
+            query = query.filter(Question.content.like(f"%{content}%"))
+        if min_score is not None:
+            query = query.filter(Question.score >= min_score)
+        if max_score is not None:
+            query = query.filter(Question.score <= max_score)
+        query = query.order_by(Question.updated_at.desc(), Question.id.desc())
+        return query.all()
+    finally:
+        session.close()
+
+
+def _serialize_question(question: Question) -> QuestionItem:
+    """序列化题目为前端可用格式"""
+    return QuestionItem(
+        id=question.id,
+        guid=question.guid,
+        content=question.content,
+        answer=question.answer,
+        score=question.score,
+        updated_at=question.updated_at.isoformat() if question.updated_at else None,
+    )
+
+
+def _validate_targets(target_dbs: List[str]) -> List[str]:
+    """校验并返回合法的目标数据库列表"""
+    if not target_dbs:
+        raise HTTPException(status_code=400, detail="请至少选择一个目标数据库")
+    invalid = [db for db in target_dbs if db not in engines]
+    if invalid:
+        raise HTTPException(status_code=400, detail=f"无效的数据库标识: {', '.join(invalid)}")
+    return target_dbs
+
+
+@app.post("/api/v2/auth/login", response_model=LoginResponse)
+def login_v2(request: LoginRequest):
+    """v2 登录接口，保持与新版前端一致"""
+    return login(request)
+
+
+@app.get("/api/v2/auth/me", response_model=LoginResponse)
+def read_users_me_v2(current_user: User = Depends(get_current_user)):
+    """v2 获取当前用户信息"""
+    return read_users_me(current_user)
+
+
+@app.get("/api/v2/db/status", response_model=Dict[str, DBTableCounts])
+def get_v2_db_status():
+    """返回数据库连接状态和各表数据量"""
+    return _collect_db_status_snapshot()
+
+
+@app.get("/api/v2/questions", response_model=List[QuestionItem])
+def list_v2_questions(
+    content: Optional[str] = None,
+    min_score: Optional[float] = None,
+    max_score: Optional[float] = None,
+):
+    """查询题目列表（默认读取主库 mysql，若失败尝试其他库）"""
+    errors = []
+    for db_name in ("mysql", "sqlserver", "oracle"):
+        try:
+            questions = _fetch_questions_from_db(db_name, content, min_score, max_score)
+            return [_serialize_question(q) for q in questions]
+        except Exception as exc:
+            errors.append(f"{db_name}: {exc}")
+            continue
+    raise HTTPException(status_code=500, detail="无法从任何数据库获取题目: " + " | ".join(errors))
+
+
+@app.post("/api/v2/questions")
+def create_v2_question(request: QuestionTargetRequest, current_user: User = Depends(get_current_user)):
+    """创建题目并同步到指定数据库，其余库创建待同步任务"""
+    selected_dbs = _validate_targets(request.target_dbs)
+    all_dbs = list(engines.keys())
+    pending_dbs = [db for db in all_dbs if db not in selected_dbs]
+    generated_guid = str(uuid.uuid4())
+
+    result = {"guid": generated_guid, "direct_writes": [], "pending_tasks": []}
+
+    for db_name in selected_dbs:
+        session = next(get_session(db_name))
+        try:
+            question_payload = QuestionCreate(
+                content=request.question.content,
+                answer=request.question.answer,
+                score=request.question.score,
+                guid=generated_guid,
+            )
+            create_question(session, question_payload)
+            session.commit()
+            result["direct_writes"].append({"db": db_name, "status": "success"})
+        except Exception as exc:
+            session.rollback()
+            result["direct_writes"].append({"db": db_name, "status": "error", "error": str(exc)})
+        finally:
+            session.close()
+
+    for db_name in pending_dbs:
+        try:
+            payload = request.question.model_dump()
+            payload["guid"] = generated_guid
+            log_id = CrossDBManager.record_sync_task(
+                source_db="mysql",
+                target_db=db_name,
+                operation_type="INSERT",
+                event_type="question_create",
+                payload=payload,
+            )
+            result["pending_tasks"].append({"db": db_name, "log_id": log_id, "status": "pending"})
+        except Exception as exc:
+            result["pending_tasks"].append({"db": db_name, "status": "error", "error": str(exc)})
+
+    return result
+
+
+@app.put("/api/v2/questions/{question_guid}")
+def update_v2_question(
+    question_guid: str,
+    request: QuestionTargetRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """更新题目并同步到指定数据库，其余库记录待同步任务"""
+    selected_dbs = _validate_targets(request.target_dbs)
+    all_dbs = list(engines.keys())
+    pending_dbs = [db for db in all_dbs if db not in selected_dbs]
+
+    result = {"guid": question_guid, "direct_writes": [], "pending_tasks": []}
+
+    for db_name in selected_dbs:
+        session = next(get_session(db_name))
+        try:
+            update_question(session, question_guid, QuestionUpdate(**request.question.model_dump()))
+            session.commit()
+            result["direct_writes"].append({"db": db_name, "status": "success"})
+        except Exception as exc:
+            session.rollback()
+            result["direct_writes"].append({"db": db_name, "status": "error", "error": str(exc)})
+        finally:
+            session.close()
+
+    for db_name in pending_dbs:
+        try:
+            payload = request.question.model_dump()
+            payload["guid"] = question_guid
+            log_id = CrossDBManager.record_sync_task(
+                source_db="mysql",
+                target_db=db_name,
+                operation_type="UPDATE",
+                event_type="question_update",
+                payload=payload,
+            )
+            result["pending_tasks"].append({"db": db_name, "log_id": log_id, "status": "pending"})
+        except Exception as exc:
+            result["pending_tasks"].append({"db": db_name, "status": "error", "error": str(exc)})
+
+    return result
+
+
+@app.delete("/api/v2/questions/{question_guid}")
+def delete_v2_question(
+    question_guid: str,
+    request: QuestionDeleteRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """删除题目，可选择立即删除的库，其余库记录待同步任务"""
+    selected_dbs = _validate_targets(request.target_dbs)
+    all_dbs = list(engines.keys())
+    pending_dbs = [db for db in all_dbs if db not in selected_dbs]
+
+    result = {"guid": question_guid, "direct_deletes": [], "pending_tasks": []}
+
+    for db_name in selected_dbs:
+        session = next(get_session(db_name))
+        try:
+            question = session.query(Question).filter(Question.guid == question_guid).first()
+            if question:
+                session.delete(question)
+                session.commit()
+                result["direct_deletes"].append({"db": db_name, "status": "success"})
+            else:
+                result["direct_deletes"].append({"db": db_name, "status": "not_found"})
+        except Exception as exc:
+            session.rollback()
+            result["direct_deletes"].append({"db": db_name, "status": "error", "error": str(exc)})
+        finally:
+            session.close()
+
+    for db_name in pending_dbs:
+        try:
+            log_id = CrossDBManager.record_sync_task(
+                source_db="mysql",
+                target_db=db_name,
+                operation_type="DELETE",
+                event_type="question_delete",
+                payload={"guid": question_guid},
+            )
+            result["pending_tasks"].append({"db": db_name, "log_id": log_id, "status": "pending"})
+        except Exception as exc:
+            result["pending_tasks"].append({"db": db_name, "status": "error", "error": str(exc)})
+
+    return result
+
+
+@app.get("/api/v2/sync/tasks", response_model=List[SyncTask])
+def list_v2_sync_tasks(status: Optional[str] = None, limit: int = 50, current_user: User = Depends(get_current_user)):
+    """查询同步任务日志（默认MySQL主库）"""
+    session = next(get_session("mysql"))
+    try:
+        query = session.query(SyncLog).order_by(SyncLog.created_at.desc())
+        if status:
+            query = query.filter(SyncLog.sync_status == status.upper())
+        query = query.limit(limit)
+        logs = query.all()
+        return [
+            SyncTask(
+                id=log.id,
+                source_db=log.source_db,
+                target_db=log.target_db,
+                operation_type=log.operation_type,
+                event_type=log.event_type,
+                sync_status=log.sync_status,
+                error_msg=log.error_msg,
+                created_at=log.created_at.isoformat() if log.created_at else "",
+            )
+            for log in logs
+        ]
+    finally:
+        session.close()
+
+
+@app.post("/api/v2/sync/tasks/{log_id}/execute")
+def execute_v2_sync_task(log_id: int, current_user: User = Depends(get_current_user)):
+    """手动执行同步任务"""
+    try:
+        success = CrossDBManager.execute_sync_task(log_id)
+        status = "success" if success else "failed"
+        return {"status": status, "log_id": log_id}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
