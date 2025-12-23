@@ -1166,8 +1166,11 @@ def repair_sync(request: RepairSyncRequest):
                 target_user = User(
                     id=user.id,
                     username=user.username,
+                    email=user.email,
                     password_hash=user.password_hash,
-                    role=user.role
+                    role=user.role,
+                    created_at=user.created_at,
+                    updated_at=user.updated_at
                 )
                 target_session.add(target_user)
                 sync_count += 1
@@ -1190,7 +1193,9 @@ def repair_sync(request: RepairSyncRequest):
             for exam in mysql_exams:
                 target_exam = Exam(
                     id=exam.id,
-                    paper_name=exam.paper_name,
+                    name=exam.name,
+                    start_time=exam.start_time,
+                    end_time=exam.end_time,
                     created_at=exam.created_at,
                     updated_at=exam.updated_at
                 )
@@ -1202,7 +1207,7 @@ def repair_sync(request: RepairSyncRequest):
                 target_score = Score(
                     id=score.id,
                     user_id=score.user_id,
-                    paper_id=score.paper_id,
+                    exam_id=score.exam_id,
                     score_value=score.score_value,
                     created_at=score.created_at,
                     updated_at=score.updated_at
