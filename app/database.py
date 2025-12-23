@@ -1,16 +1,15 @@
-import os
 from typing import Dict
 
 from sqlalchemy import create_engine, text, inspect
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.engine import make_url
 
 from .config import get_settings
 
 settings = get_settings()
 
 # 当前运行模式：production 或 sqlite（测试用）
-# 默认使用 sqlite，方便直接运行项目而无需额外数据库驱动
 DB_MODE = settings.db_mode.lower()
 IS_SQLITE_MODE = DB_MODE == "sqlite"
 
@@ -55,11 +54,12 @@ DATABASE_CONFIGS = _build_database_configs()
 def _create_engine(db_name: str):
     config = DATABASE_CONFIGS[db_name]
     connect_args = config.get("connect_args", {}).copy()
+    url = make_url(config["url"])
 
-    if db_name == "oracle" and not IS_SQLITE_MODE:
+    if url.drivername.startswith("oracle"):
         connect_args.setdefault("threaded", True)
 
-    if db_name == "sqlserver" and not IS_SQLITE_MODE:
+    if url.drivername.startswith("mssql+pyodbc"):
         try:
             import pyodbc  # noqa: F401
         except ModuleNotFoundError as exc:  # pragma: no cover - runtime guard
@@ -68,7 +68,7 @@ def _create_engine(db_name: str):
             ) from exc
 
     return create_engine(
-        config["url"],
+        url,
         echo=config.get("echo", False),
         connect_args=connect_args,
         pool_pre_ping=True,
@@ -92,7 +92,7 @@ def init_db():
     """初始化数据库结构（在SQLite测试模式下使用）。"""
     for engine in engines.values():
         Base.metadata.create_all(bind=engine)
-        if not IS_SQLITE_MODE and "oracle" in engine.url.drivername:
+        if engine.url.drivername.startswith("oracle"):
             _init_oracle_sequences(engine)
 
 
@@ -157,7 +157,7 @@ def _ensure_schema(engine):
     existing_tables = inspector.get_table_names()
     if not existing_tables:
         Base.metadata.create_all(bind=engine)
-        if "oracle" in engine.url.drivername:
+        if engine.url.drivername.startswith("oracle"):
             _init_oracle_sequences(engine)
 
 
@@ -169,7 +169,7 @@ def check_connectivity() -> Dict[str, Dict[str, str]]:
         try:
             _ensure_schema(engine)
             with engine.connect() as conn:
-                if name == "oracle" and not IS_SQLITE_MODE:
+                if engine.url.drivername.startswith("oracle"):
                     conn.execute(text("SELECT 1 FROM DUAL"))
                 else:
                     conn.execute(text("SELECT 1"))

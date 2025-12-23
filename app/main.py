@@ -25,7 +25,6 @@ from .sync_decorator import CrossDBManager
 from .models import Question, Score, SyncLog, User
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-import hashlib
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -1097,33 +1096,23 @@ def get_questions_details():
     
     return {"details": details}
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password by comparing hashed values"""
-    return hashlib.sha256(plain_password.encode()).hexdigest() == hashed_password
-
 @app.post("/api/login")
-def login(login_data: LoginRequest):
-    """用户登录"""
-    # 查找用户
+def legacy_login(login_data: LoginRequest):
+    """用户登录（兼容旧接口），使用真实用户表和JWT令牌"""
     user = None
-    
-    for db_name in engines.keys():
-        try:
-            session = next(get_session(db_name))
-            try:
-                user = session.query(User).filter(User.username == login_data.username).first()
-                if user:
-                    break
-            finally:
-                session.close()
-        except Exception:
-            continue
-    
+    session = next(get_session("mysql"))
+    try:
+        user = get_user_by_username(session, login_data.username)
+    finally:
+        session.close()
+
     if not user or not verify_password(login_data.password, user.password_hash):
         raise HTTPException(status_code=401, detail="用户名或密码错误")
-    
-    # Simple token implementation (in production, use JWT or proper token system)
-    token = hashlib.sha256((user.username + user.role).encode()).hexdigest()
+
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    token = create_access_token(
+        data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires
+    )
     return {"token": token, "username": user.username, "role": user.role}
 
 @app.post("/api/questions")
