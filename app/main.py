@@ -23,7 +23,7 @@ from .database import (
     Base,
 )
 from .sync_decorator import CrossDBManager
-from .models import Question, Score, SyncLog, User
+from .models import Exam, Question, Score, SyncLog, User
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 
@@ -115,6 +115,24 @@ class SyncLogResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class SyncLogStreamItem(BaseModel):
+    """同步日志流数据"""
+    id: int
+    target_db: str
+    operation_type: str
+    event_type: str
+    sync_status: str
+    created_at: str
+
+class StudentScoreReport(BaseModel):
+    """学生成绩分析数据"""
+    student_name: str
+    exam_name: str
+    score: float
+    source_db: str
+    sync_status: Optional[str] = None
 
 class UserStats(BaseModel):
     """用户统计模型"""
@@ -1570,59 +1588,19 @@ def get_student_scores_report():
     
     for db_name in engines.keys():
         try:
-            session = next(get_session(db_name))
-            try:
-                # 使用原生SQL进行多表连接查询
-                if db_name == 'mysql':
-                    sql = """SELECT 
-                        u.username AS student_name,
-                        ep.paper_name AS exam_name,
-                        s.score_value AS score,
-                        sl.status AS sync_status
-                    FROM T_SCORES s
-                    JOIN T_USERS u ON s.user_id = u.id
-                    JOIN T_EXAM_PAPERS ep ON s.paper_id = ep.id
-                    LEFT JOIN T_SYNC_LOGS sl ON s.id = sl.record_id AND sl.event_type = 'update_score'
-                    ORDER BY u.username, ep.paper_name"""
-                elif db_name == 'sqlserver':
-                    sql = """SELECT 
-                        u.username AS student_name,
-                        ep.paper_name AS exam_name,
-                        s.score_value AS score,
-                        sl.status AS sync_status
-                    FROM T_SCORES s
-                    JOIN T_USERS u ON s.user_id = u.id
-                    JOIN T_EXAM_PAPERS ep ON s.paper_id = ep.id
-                    LEFT JOIN T_SYNC_LOGS sl ON s.id = sl.record_id AND sl.event_type = 'update_score'
-                    ORDER BY u.username, ep.paper_name"""
-                else:  # oracle
-                    sql = """SELECT 
-                        u.username AS student_name,
-                        ep.paper_name AS exam_name,
-                        s.score_value AS score,
-                        sl.status AS sync_status
-                    FROM T_SCORES s
-                    JOIN T_USERS u ON s.user_id = u.id
-                    JOIN T_EXAM_PAPERS ep ON s.paper_id = ep.id
-                    LEFT JOIN T_SYNC_LOGS sl ON s.id = sl.record_id AND sl.event_type = 'update_score'
-                    ORDER BY u.username, ep.paper_name"""
-                
-                result = session.execute(text(sql))
-                scores_report = []
-                for row in result:
-                    scores_report.append({
-                        "student_name": row.student_name,
-                        "exam_name": row.exam_name,
-                        "score": float(row.score) if row.score else 0.0,
-                        "sync_status": row.sync_status if row.sync_status else "unknown"
-                    })
-                
-                results[db_name] = {
-                    "status": "success",
-                    "scores_report": scores_report
-                }
-            finally:
-                session.close()
+            scores = _fetch_student_scores(db_name)
+            results[db_name] = {
+                "status": "success",
+                "scores_report": [
+                    {
+                        "student_name": item.student_name,
+                        "exam_name": item.exam_name,
+                        "score": item.score,
+                        "sync_status": item.sync_status or "unknown",
+                    }
+                    for item in scores
+                ],
+            }
         except Exception as e:
             results[db_name] = {
                 "status": "error",
@@ -1690,6 +1668,59 @@ def _fetch_questions_from_db(
             query = query.filter(Question.score <= max_score)
         query = query.order_by(Question.updated_at.desc(), Question.id.desc())
         return query.all()
+    finally:
+        session.close()
+
+
+def _fetch_sync_log_stream(limit: int) -> List[SyncLogStreamItem]:
+    """获取同步日志流（默认从MySQL日志表读取真实数据）"""
+    session = next(get_session("mysql"))
+    try:
+        logs = (
+            session.query(SyncLog)
+            .order_by(SyncLog.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            SyncLogStreamItem(
+                id=log.id,
+                target_db=log.target_db,
+                operation_type=log.operation_type,
+                event_type=log.event_type,
+                sync_status=log.sync_status,
+                created_at=log.created_at.isoformat() if log.created_at else "",
+            )
+            for log in logs
+        ]
+    finally:
+        session.close()
+
+
+def _fetch_student_scores(db_name: str) -> List[StudentScoreReport]:
+    """查询指定数据库的学生成绩分析数据"""
+    session = next(get_session(db_name))
+    try:
+        rows = (
+            session.query(
+                User.username.label("student_name"),
+                Exam.name.label("exam_name"),
+                Score.score_value.label("score"),
+            )
+            .join(User, Score.user_id == User.id)
+            .join(Exam, Score.exam_id == Exam.id)
+            .order_by(User.username, Exam.name)
+            .all()
+        )
+        return [
+            StudentScoreReport(
+                student_name=row.student_name,
+                exam_name=row.exam_name,
+                score=float(row.score) if row.score is not None else 0.0,
+                source_db=db_name,
+            )
+            for row in rows
+        ]
     finally:
         session.close()
 
@@ -1922,3 +1953,24 @@ def execute_v2_sync_task(log_id: int, current_user: User = Depends(get_current_u
         return {"status": status, "log_id": log_id}
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.get("/api/v2/sync/log-stream", response_model=List[SyncLogStreamItem])
+def list_v2_sync_log_stream(limit: int = 30, current_user: User = Depends(get_current_user)):
+    """返回实时同步日志流（基于真实T_SYNC_LOGS数据）"""
+    if limit <= 0:
+        raise HTTPException(status_code=400, detail="limit 必须大于 0")
+    return _fetch_sync_log_stream(limit)
+
+
+@app.get("/api/v2/reports/student-scores", response_model=List[StudentScoreReport])
+def list_v2_student_scores(current_user: User = Depends(get_current_user)):
+    """学生成绩分析（自动选择首个可用数据库，使用真实表数据）"""
+    errors = []
+    for db_name in ("mysql", "sqlserver", "oracle"):
+        try:
+            return _fetch_student_scores(db_name)
+        except Exception as exc:
+            errors.append(f"{db_name}: {exc}")
+            continue
+    raise HTTPException(status_code=500, detail="无法从任何数据库获取学生成绩: " + " | ".join(errors))
