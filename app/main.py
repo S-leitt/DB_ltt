@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Dict, List, Optional
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import engines, get_session, SIMULATE_ORACLE_FAILURE
+from .database import engines, get_session, SIMULATE_ORACLE_FAILURE, init_db, IS_SQLITE_MODE
 from .sync_decorator import CrossDBManager
 from .models import Question, Score, SyncLog, User
 from sqlalchemy.orm import Session
@@ -20,6 +20,10 @@ app = FastAPI(
 # 启动时打印所有路由
 @app.on_event("startup")
 async def print_routes():
+    if IS_SQLITE_MODE:
+        # 测试模式下自动创建SQLite表结构，保证接口可直接运行
+        init_db()
+
     print("=== 已注册的路由表 ===")
     for route in app.routes:
         if hasattr(route, "path") and hasattr(route, "methods"):
@@ -148,11 +152,11 @@ def test_connection():
             # 测试连接 - 使用text()包装SQL语句
             with engine.connect() as conn:
                 # 针对不同数据库使用不同的测试语句
-                if db_name == 'oracle':
+                if db_name == 'oracle' and not IS_SQLITE_MODE:
                     # Oracle需要FROM子句
                     conn.execute(text("SELECT 1 FROM DUAL"))
                 else:
-                    # MySQL和SQL Server支持SELECT 1语法
+                    # MySQL、SQL Server和SQLite支持SELECT 1语法
                     conn.execute(text("SELECT 1"))
             results[db_name] = ConnectionTestResult(
                 status="success",
