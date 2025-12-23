@@ -1,15 +1,35 @@
-from fastapi import FastAPI, HTTPException, Depends
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from datetime import datetime, timedelta
 from typing import Dict, List, Optional
+
+from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from emails import Message
+from emails.smtp import SMTP
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from .database import engines, get_session, SIMULATE_ORACLE_FAILURE, init_db, IS_SQLITE_MODE
+from .config import get_settings
+from .database import (
+    engines,
+    get_session,
+    SIMULATE_ORACLE_FAILURE,
+    init_db,
+    IS_SQLITE_MODE,
+    check_connectivity,
+    Base,
+)
 from .sync_decorator import CrossDBManager
 from .models import Question, Score, SyncLog, User
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import hashlib
+
+settings = get_settings()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+security = HTTPBearer()
 
 app = FastAPI(
     title="多数据库同步系统",
@@ -23,6 +43,9 @@ async def print_routes():
     if IS_SQLITE_MODE:
         # 测试模式下自动创建SQLite表结构，保证接口可直接运行
         init_db()
+
+    ensure_default_admin()
+    check_connectivity()
 
     print("=== 已注册的路由表 ===")
     for route in app.routes:
@@ -116,9 +139,101 @@ class TokenData(BaseModel):
     username: str
     role: str
 
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
+
+
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
+
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return encoded_jwt
+
+
+def get_user_by_username(db: Session, username: str) -> Optional[User]:
+    return db.query(User).filter(User.username == username).first()
+
+
+def ensure_default_admin():
+    """Ensure a default admin user exists for quick start."""
+    for db_name, engine in engines.items():
+        Base.metadata.create_all(bind=engine)
+        session = next(get_session(db_name))
+        try:
+            user = get_user_by_username(session, "admin")
+            if not user:
+                admin = User(
+                    username="admin",
+                    email="admin@example.com",
+                    password_hash=get_password_hash("admin123"),
+                    role="ADMIN",
+                )
+                session.add(admin)
+                session.commit()
+        except Exception:
+            session.rollback()
+        finally:
+            session.close()
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> User:
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+        username: str = payload.get("sub")
+        role: str = payload.get("role")
+        if username is None:
+            raise HTTPException(status_code=401, detail="无效的令牌")
+        token_data = TokenData(username=username, role=role)
+    except JWTError:
+        raise HTTPException(status_code=401, detail="无法验证令牌")
+
+    session = next(get_session("mysql"))
+    try:
+        user = get_user_by_username(session, token_data.username)
+        if user is None:
+            raise HTTPException(status_code=401, detail="用户不存在")
+        return user
+    finally:
+        session.close()
 class SimulateFaultRequest(BaseModel):
     """模拟故障请求模型"""
     enable: bool
+
+
+class RepairRequest(BaseModel):
+    source_db: str
+    target_dbs: List[str]
+    guid: str
+
+
+@app.post("/api/auth/login", response_model=LoginResponse)
+def login(request: LoginRequest):
+    session = next(get_session("mysql"))
+    try:
+        user = get_user_by_username(session, request.username)
+        if not user or not verify_password(request.password, user.password_hash):
+            raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+        access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+        token = create_access_token(
+            data={"sub": user.username, "role": user.role}, expires_delta=access_token_expires
+        )
+        return LoginResponse(token=token, username=user.username, role=user.role)
+    finally:
+        session.close()
+
+
+@app.get("/api/auth/me", response_model=LoginResponse)
+def read_users_me(current_user: User = Depends(get_current_user)):
+    dummy_token = ""
+    return LoginResponse(token=dummy_token, username=current_user.username, role=current_user.role)
 
 @app.post("/api/simulate-fault")
 def simulate_fault(request: SimulateFaultRequest):
@@ -141,6 +256,97 @@ def simulate_fault(request: SimulateFaultRequest):
         "message": f"Oracle故障模拟已{status}",
         "current_state": request.enable
     }
+
+
+def _queue_failure_email(background_tasks: BackgroundTasks, subject: str, html: str):
+    def _send():
+        message = Message(subject=subject, html=html, mail_from=settings.smtp_from)
+        smtp = SMTP(
+            host=settings.smtp_host,
+            port=settings.smtp_port,
+            user=settings.smtp_user,
+            password=settings.smtp_password,
+            tls=True,
+        )
+        smtp.send(message, recipients=[settings.smtp_user])
+
+    background_tasks.add_task(_send)
+
+
+@app.get("/api/arbiter/{guid}")
+def get_guid_diff(guid: str, current_user: User = Depends(get_current_user)):
+    payload = {}
+    for db_name in engines.keys():
+        session = next(get_session(db_name))
+        try:
+            q = session.query(Question).filter(Question.guid == guid).first()
+            if q:
+                payload[db_name] = {
+                    "content": q.content,
+                    "answer": q.answer,
+                    "score": q.score,
+                    "updated_at": q.updated_at.isoformat() if q.updated_at else None,
+                }
+            else:
+                payload[db_name] = {"missing": True}
+        finally:
+            session.close()
+    return payload
+
+
+@app.post("/api/sync/repair")
+def repair_sync(request: RepairRequest, background_tasks: BackgroundTasks, current_user: User = Depends(get_current_user)):
+    if request.source_db not in engines:
+        raise HTTPException(status_code=400, detail="无效的源数据库")
+
+    source_session = next(get_session(request.source_db))
+    try:
+        source_question = source_session.query(Question).filter(Question.guid == request.guid).first()
+        if not source_question:
+            raise HTTPException(status_code=404, detail="源数据库未找到该GUID")
+
+        failures = []
+        for target in request.target_dbs:
+            if target not in engines or target == request.source_db:
+                continue
+            target_session = next(get_session(target))
+            try:
+                target_question = target_session.query(Question).filter(Question.guid == request.guid).first()
+                if not target_question:
+                    target_question = Question(
+                        guid=source_question.guid,
+                        content=source_question.content,
+                        answer=source_question.answer,
+                        score=source_question.score,
+                    )
+                    target_session.add(target_question)
+                else:
+                    target_question.content = source_question.content
+                    target_question.answer = source_question.answer
+                    target_question.score = source_question.score
+                target_session.commit()
+            except Exception as exc:
+                target_session.rollback()
+                failures.append({"target": target, "error": str(exc)})
+            finally:
+                target_session.close()
+
+        if failures:
+            html_error = """
+                <h3>同步修复失败</h3>
+                <p>以下目标库修复失败：</p>
+                <ul>
+            """
+            for fail in failures:
+                html_error += f"<li>{fail['target']}: {fail['error']}</li>"
+            html_error += "</ul>"
+            html_error += f"<p><a href='{settings.app_base_url}/index.html#arbiter' style='padding:8px 12px;background:#0d6efd;color:#fff;text-decoration:none;border-radius:4px;'>前往数据仲裁者</a></p>"
+            _queue_failure_email(background_tasks, "同步修复失败", html_error)
+            return {"status": "partial", "failures": failures}
+
+        return {"status": "success"}
+    finally:
+        source_session.close()
 
 @app.post("/test-connection", response_model=Dict[str, ConnectionTestResult])
 def test_connection():
@@ -264,6 +470,7 @@ def get_sync_health(limit: int = 10):
 class SyncStats(BaseModel):
     success_count: int
     failed_count: int
+    pending_count: int
     total_count: int
     success_rate: float
 
@@ -278,20 +485,23 @@ def get_stats():
             SELECT 
                 SUM(CASE WHEN sync_status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
                 SUM(CASE WHEN sync_status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN sync_status = 'PENDING' THEN 1 ELSE 0 END) as pending_count,
                 COUNT(*) as total_count
             FROM T_SYNC_LOGS
         """,
         'sqlserver': """
-            SELECT 
+            SELECT
                 SUM(CASE WHEN sync_status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
                 SUM(CASE WHEN sync_status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN sync_status = 'PENDING' THEN 1 ELSE 0 END) as pending_count,
                 COUNT(*) as total_count
             FROM T_SYNC_LOGS
         """,
         'oracle': """
-            SELECT 
+            SELECT
                 SUM(CASE WHEN sync_status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
                 SUM(CASE WHEN sync_status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN sync_status = 'PENDING' THEN 1 ELSE 0 END) as pending_count,
                 COUNT(*) as total_count
             FROM T_SYNC_LOGS
         """
@@ -307,6 +517,7 @@ def get_stats():
                 # 计算成功率
                 success_count = int(row.success_count) if row.success_count else 0
                 failed_count = int(row.failed_count) if row.failed_count else 0
+                pending_count = int(row.pending_count) if row.pending_count else 0
                 total_count = int(row.total_count) if row.total_count else 0
                 success_rate = success_count / total_count if total_count > 0 else 0.0
                 
@@ -314,6 +525,7 @@ def get_stats():
                 sync_stats = SyncStats(
                     success_count=success_count,
                     failed_count=failed_count,
+                    pending_count=pending_count,
                     total_count=total_count,
                     success_rate=success_rate
                 )
@@ -324,6 +536,7 @@ def get_stats():
             results[db_name] = SyncStats(
                 success_count=0,
                 failed_count=0,
+                pending_count=0,
                 total_count=0,
                 success_rate=0.0
             )

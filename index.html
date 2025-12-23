@@ -10,6 +10,7 @@
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <!-- 引入Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body {
             background-color: #f8f9fa;
@@ -128,6 +129,29 @@
                             <div id="oracle-status-text">加载中...</div>
                             <div id="oracle-tables" class="mt-2"></div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 同步状态与报表 -->
+        <div class="card dashboard-card">
+            <div class="card-header bg-success text-white">
+                <h3 class="card-title">
+                    <i class="fa fa-line-chart"></i> 状态与报表
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="d-flex align-items-center mb-3">
+                            <span class="badge bg-success me-2" id="status-lamp">在线</span>
+                            <span class="text-muted">自动连接自检已完成</span>
+                        </div>
+                        <p class="text-muted">系统会在启动时自检三库连接，并在此展示状态。</p>
+                    </div>
+                    <div class="col-md-6">
+                        <canvas id="pending-chart" height="120"></canvas>
                     </div>
                 </div>
             </div>
@@ -418,6 +442,70 @@
                 </div>
             </div>
         </div>
+
+        <!-- 数据仲裁者 -->
+        <div class="card dashboard-card" id="arbiter">
+            <div class="card-header bg-info text-white">
+                <h3 class="card-title">
+                    <i class="fa fa-handshake-o"></i> Data Arbiter 数据仲裁者
+                </h3>
+            </div>
+            <div class="card-body">
+                <form id="arbiter-form" class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label class="form-label">GUID</label>
+                        <input type="text" class="form-control" id="arbiter-guid" placeholder="输入题目GUID" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">源数据库</label>
+                        <select class="form-select" id="arbiter-source">
+                            <option value="mysql">MySQL</option>
+                            <option value="sqlserver">SQL Server</option>
+                            <option value="oracle">Oracle</option>
+                        </select>
+                    </div>
+                    <div class="col-md-5">
+                        <label class="form-label">目标数据库</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="mysql" id="target-mysql" checked>
+                            <label class="form-check-label" for="target-mysql">MySQL</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="sqlserver" id="target-sqlserver" checked>
+                            <label class="form-check-label" for="target-sqlserver">SQL Server</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="oracle" id="target-oracle" checked>
+                            <label class="form-check-label" for="target-oracle">Oracle</label>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-info">加载差异</button>
+                        <button type="button" id="btn-repair" class="btn btn-success ms-2">一键同步修复</button>
+                    </div>
+                </form>
+                <div class="row" id="arbiter-cards">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">MySQL</div>
+                            <div class="card-body" id="arbiter-mysql">等待加载...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">SQL Server</div>
+                            <div class="card-body" id="arbiter-sqlserver">等待加载...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-header">Oracle</div>
+                            <div class="card-body" id="arbiter-oracle">等待加载...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 编辑题目模态框 -->
@@ -462,27 +550,76 @@
         // API基础URL
         const API_BASE = 'http://127.0.0.1:8006/api';
 
+        const App = {
+            token: localStorage.getItem('token'),
+            user: JSON.parse(localStorage.getItem('userInfo') || 'null'),
+            setSession(user, token) {
+                this.user = user;
+                this.token = token;
+                localStorage.setItem('userInfo', JSON.stringify(user));
+                localStorage.setItem('token', token);
+                $.ajaxSetup({
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    statusCode: {
+                        401: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: '登录已过期',
+                                text: '请重新登录',
+                                confirmButtonText: '前往登录'
+                            }).then(() => window.location.href = 'login.html');
+                        }
+                    }
+                });
+            },
+            ensureAuth() {
+                if (!this.token) {
+                    window.location.href = 'login.html';
+                    return false;
+                }
+                $.ajax({
+                    url: `${API_BASE}/auth/me`,
+                    method: 'GET',
+                    headers: { 'Authorization': `Bearer ${this.token}` },
+                    success: (data) => {
+                        this.user = { username: data.username, role: data.role };
+                        localStorage.setItem('userInfo', JSON.stringify(this.user));
+                        $('#username').text(this.user.username);
+                        $('#user-role').text(this.user.role);
+                    },
+                    error: () => {
+                        Swal.fire('登录失效', '请重新登录', 'warning').then(() => window.location.href = 'login.html');
+                    }
+                });
+                return true;
+            }
+        };
+
+        if (App.token) {
+            App.setSession(App.user, App.token);
+        }
+
         // 登出函数
         function handleLogout() {
             localStorage.removeItem('userInfo');
+            localStorage.removeItem('token');
             window.location.href = 'login.html';
         }
         // 确保API前缀统一，避免/api/api/重复
-        
+
         // 用户信息
         let userInfo = null;
-        
+
         // 检查登录状态
         function checkLogin() {
-            const storedUserInfo = localStorage.getItem('userInfo');
-            if (!storedUserInfo) {
-                // 未登录，跳转到登录页面
+            if (!App.token) {
                 window.location.href = 'login.html';
                 return false;
             }
-            
-            // 已登录，解析用户信息
-            userInfo = JSON.parse(storedUserInfo);
+
+            userInfo = App.user;
             return true;
         }
         
@@ -490,6 +627,7 @@
         function logout() {
             if (confirm('确定要登出吗？')) {
                 localStorage.removeItem('userInfo');
+                localStorage.removeItem('token');
                 window.location.href = 'login.html';
             }
         }
@@ -500,6 +638,7 @@
         } else {
             // 已登录，页面加载完成后执行
             $(document).ready(function() {
+                App.ensureAuth();
                 // 更新用户信息显示
                 if (userInfo) {
                     $('#username').text(userInfo.username);
@@ -1068,15 +1207,18 @@
             $.get(`${API_BASE}/stats`, function(data) {
                 let totalSuccessCount = 0;
                 let totalFailureCount = 0;
-                
+                let totalPendingCount = 0;
+
                 // 合并所有数据库的统计数据
                 $.each(data, function(dbName, stats) {
                     totalSuccessCount += stats.success_count;
                     totalFailureCount += stats.failed_count;
+                    totalPendingCount += stats.pending_count;
                 });
-                
+
                 // 渲染饼图
                 renderSyncPieChart(totalSuccessCount, totalFailureCount);
+                renderPendingChart(totalPendingCount, totalSuccessCount + totalFailureCount + totalPendingCount);
             }).fail(function() {
                 console.error('获取同步统计数据失败');
             });
@@ -1132,6 +1274,31 @@
                                 }
                             }
                         }
+                    }
+                }
+            });
+        }
+
+        function renderPendingChart(pendingCount, total) {
+            const ctx = document.getElementById('pending-chart').getContext('2d');
+            const done = total - pendingCount;
+
+            if (window.pendingChart) {
+                window.pendingChart.destroy();
+            }
+
+            window.pendingChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['处理中', '已完成'],
+                    datasets: [{
+                        data: [pendingCount, done],
+                        backgroundColor: ['#ffc107', '#20c997']
+                    }]
+                },
+                options: {
+                    plugins: {
+                        legend: { position: 'bottom' }
                     }
                 }
             });
@@ -1536,6 +1703,58 @@
             });
         }
         
+        $('#arbiter-form').on('submit', function(e) {
+            e.preventDefault();
+            const guid = $('#arbiter-guid').val();
+            if (!guid) return;
+            $.ajax({
+                url: `${API_BASE}/arbiter/${guid}`,
+                headers: { 'Authorization': `Bearer ${App.token}` },
+                success: function(res) {
+                    renderArbiterCard('#arbiter-mysql', res.mysql);
+                    renderArbiterCard('#arbiter-sqlserver', res.sqlserver);
+                    renderArbiterCard('#arbiter-oracle', res.oracle);
+                }
+            });
+        });
+
+        $('#btn-repair').on('click', function() {
+            const guid = $('#arbiter-guid').val();
+            const source = $('#arbiter-source').val();
+            const targets = [];
+            $('#arbiter-form input[type="checkbox"]:checked').each(function() { targets.push($(this).val()); });
+            $.ajax({
+                url: `${API_BASE}/sync/repair`,
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${App.token}` },
+                contentType: 'application/json',
+                data: JSON.stringify({ guid: guid, source_db: source, target_dbs: targets }),
+                success: function(res) {
+                    if (res.status === 'success') {
+                        Swal.fire('修复完成', '目标库已与源库同步', 'success');
+                    } else {
+                        Swal.fire('部分失败', '已触发邮件告警', 'warning');
+                    }
+                },
+                error: function() {
+                    Swal.fire('请求失败', '请检查后台日志', 'error');
+                }
+            });
+        });
+
+        function renderArbiterCard(selector, data) {
+            if (!data || data.missing) {
+                $(selector).html('<span class="text-danger">未找到记录</span>');
+                return;
+            }
+            $(selector).html(`
+                <p><strong>内容：</strong>${data.content}</p>
+                <p><strong>答案：</strong>${data.answer}</p>
+                <p><strong>分数：</strong>${data.score}</p>
+                <p><strong>更新时间：</strong>${data.updated_at || '无'}</p>
+            `);
+        }
+
         // 初始化和定时刷新
         $(document).ready(function() {
             // 初始化数据

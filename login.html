@@ -95,7 +95,7 @@
     
     <script>
         // API基础URL
-        const API_BASE = 'http://127.0.0.1:8006';
+        const API_BASE = 'http://127.0.0.1:8006/api';
         // 确保API前缀统一，避免/api/api/重复
         
         // 检查是否已登录
@@ -124,18 +124,18 @@
             
             // 发送登录请求
             $.ajax({
-                url: `${API_BASE}/api/login`,
+                url: `${API_BASE}/auth/login`,
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ username, password }),
                 success: function(data) {
                     // 登录成功，保存用户信息到localStorage
                     localStorage.setItem('userInfo', JSON.stringify({
-                        token: data.token,
                         username: data.username,
                         role: data.role
                     }));
-                    
+                    localStorage.setItem('token', data.token);
+
                     // 跳转到主页面
                     window.location.href = 'index.html';
                 },
