@@ -3,164 +3,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>用户登录 - 多数据库同步管理系统</title>
-    <!-- 引入Bootstrap CSS -->
+    <title>登录 - 多数据库同步控制台</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- 引入Font Awesome -->
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-            height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        .login-header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .login-header h1 {
-            color: #0d6efd;
-        }
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-control {
-            border-radius: 5px;
-        }
-        .btn-login {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .error-message {
-            background-color: #f8d7da;
-            color: #721c24;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            display: none;
-        }
+        body { background: linear-gradient(120deg, #0d6efd 0%, #6f9bfd 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-card { max-width: 420px; width: 100%; }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <i class="fa fa-lock fa-4x text-primary mb-3"></i>
-            <h1>多数据库同步管理系统</h1>
-            <p class="text-muted">请登录您的账户</p>
-        </div>
-        
-        <div id="login-error" class="error-message">
-            <i class="fa fa-exclamation-circle"></i> <span id="error-text"></span>
-        </div>
-        
-        <form id="login-form">
-            <div class="form-group">
-                <label for="username" class="form-label">
-                    <i class="fa fa-user"></i> 用户名
-                </label>
-                <input type="text" class="form-control" id="username" placeholder="请输入用户名" required>
+    <div class="card shadow-lg login-card">
+        <div class="card-body p-4">
+            <div class="text-center mb-3">
+                <i class="bi bi-database-fill text-primary" style="font-size: 3rem;"></i>
+                <h4 class="mt-2">多数据库同步控制台</h4>
+                <p class="text-muted">请输入账号密码登录</p>
             </div>
-            
-            <div class="form-group">
-                <label for="password" class="form-label">
-                    <i class="fa fa-key"></i> 密码
-                </label>
-                <input type="password" class="form-control" id="password" placeholder="请输入密码" required>
-            </div>
-            
-            <button type="submit" class="btn btn-primary btn-login">
-                <i class="fa fa-sign-in"></i> 登录
-            </button>
-        </form>
-        
-        <div class="text-center mt-3">
-            <p class="text-muted">默认管理员账户：admin/admin123</p>
+            <div id="error-box" class="alert alert-danger d-none"></div>
+            <form id="login-form">
+                <div class="mb-3">
+                    <label class="form-label">用户名</label>
+                    <input type="text" class="form-control" id="username" required autocomplete="username">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-control" id="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary w-100" id="login-btn">登录</button>
+            </form>
         </div>
     </div>
-    
-    <!-- 引入jQuery和Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <script>
-        // API基础URL
-        const API_BASE = 'http://127.0.0.1:8006/api';
-        // 确保API前缀统一，避免/api/api/重复
-        
-        // 检查是否已登录
-        function checkLoginStatus() {
-            const userInfo = localStorage.getItem('userInfo');
-            if (userInfo) {
-                window.location.href = 'index.html';
-            }
-        }
-        
-        // 登录表单提交事件
-        $('#login-form').submit(function(e) {
-            e.preventDefault();
-            
-            const username = $('#username').val();
-            const password = $('#password').val();
-            
-            // 显示加载状态
-            const submitBtn = $(this).find('button[type="submit"]');
-            const originalText = submitBtn.html();
-            submitBtn.html('<i class="fa fa-spinner fa-spin"></i> 登录中...');
-            submitBtn.prop('disabled', true);
-            
-            // 隐藏错误信息
-            $('#login-error').hide();
-            
-            // 发送登录请求
-            $.ajax({
-                url: `${API_BASE}/auth/login`,
-                type: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ username, password }),
-                success: function(data) {
-                    // 登录成功，保存用户信息到localStorage
-                    localStorage.setItem('userInfo', JSON.stringify({
-                        username: data.username,
-                        role: data.role
-                    }));
-                    localStorage.setItem('token', data.token);
 
-                    // 跳转到主页面
-                    window.location.href = 'index.html';
-                },
-                error: function(xhr) {
-                    // 登录失败，显示错误信息
-                    let errorMsg = '登录失败，请检查用户名和密码';
-                    if (xhr.responseJSON && xhr.responseJSON.detail) {
-                        errorMsg = xhr.responseJSON.detail;
-                    }
-                    
-                    $('#error-text').text(errorMsg);
-                    $('#login-error').show();
-                },
-                complete: function() {
-                    // 恢复按钮状态
-                    submitBtn.html(originalText);
-                    submitBtn.prop('disabled', false);
-                }
-            });
+    <script>
+        const API_BASE = '';
+
+        async function fetchJson(path, options = {}) {
+            const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+            const resp = await fetch(`${API_BASE}${path}`, { ...options, headers });
+            const data = await resp.json().catch(() => ({}));
+            if (!resp.ok) {
+                throw new Error(data.detail || data.message || resp.statusText);
+            }
+            return data;
+        }
+
+        function showError(msg) {
+            const box = document.getElementById('error-box');
+            box.textContent = msg;
+            box.classList.remove('d-none');
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            document.getElementById('login-btn').disabled = true;
+            try {
+                const data = await fetchJson('/api/v2/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+                    })
+                });
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('userInfo', JSON.stringify({ username: data.username, role: data.role }));
+                window.location.href = 'index.html';
+            } catch (err) {
+                showError('登录失败：' + err.message);
+            } finally {
+                document.getElementById('login-btn').disabled = false;
+            }
         });
-        
-        // 页面加载时检查登录状态
-        $(document).ready(function() {
-            checkLoginStatus();
-        });
+
+        // 若已登录则直接跳转
+        if (localStorage.getItem('token')) {
+            window.location.href = 'index.html';
+        }
     </script>
 </body>
 </html>
