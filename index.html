@@ -461,6 +461,12 @@
     <script>
         // API基础URL
         const API_BASE = 'http://127.0.0.1:8006/api';
+
+        // 登出函数
+        function handleLogout() {
+            localStorage.removeItem('userInfo');
+            window.location.href = 'login.html';
+        }
         // 确保API前缀统一，避免/api/api/重复
         
         // 用户信息
@@ -1341,7 +1347,7 @@
             btn.prop('disabled', true);
             
             $.ajax({
-                url: `${API_BASE}/repair-sync`
+                url: `${API_BASE}/repair-sync`,
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({ db_name: dbName, event_type: event }),

@@ -238,7 +238,7 @@ def get_sync_health(limit: int = 10):
         try:
             # 查询最近的同步日志，按创建时间倒序
             logs = db.query(SyncLog)\
-                     .filter(SyncLog.status == "error")\
+                     .filter(SyncLog.sync_status == "error")\
                      .order_by(SyncLog.created_at.desc())\
                      .limit(limit)\
                      .all()
@@ -276,22 +276,22 @@ def get_stats():
     sql_queries = {
         'mysql': """
             SELECT 
-                SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
-                SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN sync_status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
+                SUM(CASE WHEN sync_status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
                 COUNT(*) as total_count
             FROM T_SYNC_LOGS
         """,
         'sqlserver': """
             SELECT 
-                SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
-                SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN sync_status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
+                SUM(CASE WHEN sync_status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
                 COUNT(*) as total_count
             FROM T_SYNC_LOGS
         """,
         'oracle': """
             SELECT 
-                SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
-                SUM(CASE WHEN status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
+                SUM(CASE WHEN sync_status = 'SUCCESS' THEN 1 ELSE 0 END) as success_count,
+                SUM(CASE WHEN sync_status = 'FAILED' THEN 1 ELSE 0 END) as failed_count,
                 COUNT(*) as total_count
             FROM T_SYNC_LOGS
         """
@@ -507,7 +507,7 @@ def get_sync_logs(limit: int = 50):
                     log_list.append({
                         'id': log.id,
                         'event_type': log.event_type,
-                        'status': log.status,
+                        'status': log.sync_status,
                         'error_msg': log.error_msg,
                         'created_at': log.created_at.isoformat() if log.created_at else None
                     })
