@@ -4,7 +4,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
 # 当前运行模式：production 或 sqlite（测试用）
-DB_MODE = os.getenv("DB_MODE", "production").lower()
+# 默认使用 sqlite，方便直接运行项目而无需额外数据库驱动
+DB_MODE = os.getenv("DB_MODE", "sqlite").lower()
 IS_SQLITE_MODE = DB_MODE == "sqlite"
 
 
