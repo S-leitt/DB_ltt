@@ -1,14 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
-import sys
-from pathlib import Path
-
-# Ensure the project root (containing the local `emails` shim) is resolved before site-packages
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
 from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -159,8 +151,6 @@ def get_password_hash(password: str) -> str:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.access_token_expire_minutes))
-    # jose expects a numeric or datetime expiration. Using the datetime object lets it encode
-    # a proper UNIX timestamp that can be validated when decoding the token.
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
     return encoded_jwt
@@ -398,6 +388,12 @@ def login_page():
 @app.get("/index.html")
 def index_page():
     return FileResponse("index.html")
+
+@app.get("/api/db_status")
+def get_db_status():
+    """获取数据库连接状态"""
+    results = check_connectivity()
+    return results
 
 # 数据库操作函数
 def create_question(db: Session, question: QuestionCreate):
