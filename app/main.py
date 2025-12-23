@@ -1,6 +1,14 @@
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
+import sys
+from pathlib import Path
+
+# Ensure the project root (containing the local `emails` shim) is resolved before site-packages
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from fastapi import Depends, FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
