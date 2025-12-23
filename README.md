@@ -1,10 +1,10 @@
 # 多数据库同步系统
 
-该项目提供基于 FastAPI 的多数据库同步示例。默认启用 SQLite 测试模式，克隆后无需外部数据库即可直接运行和执行单元测试。
+该项目提供基于 FastAPI 的多数据库同步示例，默认连接真实的 MySQL / SQL Server / Oracle 数据库，所有接口均直接读取实际表结构。
 
 ## 快速启动（Quick Start）
 
-1. 复制环境变量模板：`cp .env.example .env`，填写数据库连接、JWT 密钥和 SMTP 信息。
+1. 复制环境变量模板：`cp .env.example .env`，填写真实数据库连接、JWT 密钥和 SMTP 信息。
 2. 安装依赖：
    ```bash
    pip install -r requirements.txt
@@ -23,11 +23,7 @@
 
 ## 连接真实数据库
 
-将 `DB_MODE` 设置为 `production` 后使用 `.env` 中的连接字符串：
-```bash
-export DB_MODE=production
-```
-确认 `.env` 已配置对应驱动和账户。
+`DB_MODE` 默认为 `production`，应用会直接使用 `.env` 中的连接字符串连接各数据库。若需本地无依赖的快速验证，可显式设置 `DB_MODE=sqlite`，仅生成本地 SQLite 文件。
 
 ## 常见问题排查（Troubleshooting）
 - **Oracle 驱动报错**：确保安装 `cx_Oracle`，并配置 Oracle Instant Client（Linux 可通过 `LD_LIBRARY_PATH` 指向安装目录）。
@@ -40,4 +36,4 @@ export DB_MODE=production
 pytest -q
 ```
 
-测试会自动在 SQLite 模式下运行，无需外部数据库。
+测试会在隔离的 SQLite 模式下运行，避免对真实数据库造成影响。
