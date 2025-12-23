@@ -389,12 +389,6 @@ def login_page():
 def index_page():
     return FileResponse("index.html")
 
-@app.get("/api/db_status")
-def get_db_status():
-    """获取数据库连接状态"""
-    results = check_connectivity()
-    return results
-
 # 数据库操作函数
 def create_question(db: Session, question: QuestionCreate):
     """创建题目"""
