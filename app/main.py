@@ -418,15 +418,30 @@ def create_question(db: Session, question: QuestionCreate):
 
 def create_score(db: Session, score: ScoreCreate):
     """创建成绩"""
-    # 获取当前会话的数据库引擎名称
-    db_name = db.bind.url.drivername
+    # 获取当前会话的数据库名称
+    from sqlalchemy import text
+    db_name = db.bind.url.database if hasattr(db.bind.url, 'database') else db.bind.url.drivername
+    
+    # 增加强制日志：准备向数据库写入数据
+    print(f"DEBUG: 准备向数据库 {db_name} 的 exam_paper_db.t_scores 表写入数据")
+    print(f"DEBUG: 写入数据内容为: user_id={score.user_id}, exam_id={score.exam_id}, score_value={score.score_value}")
+    
+    # 验证user_id是否在t_users表中真实存在
+    try:
+        user_exists = db.execute(text("SELECT COUNT(*) FROM t_users WHERE id = :user_id"), {'user_id': score.user_id}).scalar()
+        if not user_exists:
+            print(f"DEBUG: 警告: user_id={score.user_id} 在 t_users 表中不存在")
+    except Exception as e:
+        print(f"DEBUG: 验证user_id时出错: {str(e)}")
     
     # 特殊处理Oracle数据库的数据类型
-    if 'oracle' in db_name:
+    if 'oracle' in str(db.bind.url):
         # 对于Oracle数据库，显式处理数据类型和日期字段
         try:
             # 使用SQLAlchemy的func.now()确保日期字段有有效值，避免触发器验证失败
             from sqlalchemy import func
+            
+            print(f"DEBUG Oracle: 准备创建Score对象，参数: user_id={score.user_id}, exam_id={score.exam_id}, score_value={score.score_value}")
             
             # 创建Score对象，不设置updated_at（由Oracle触发器自动处理）
             db_score = Score(
@@ -437,43 +452,75 @@ def create_score(db: Session, score: ScoreCreate):
                 updated_at=func.now()  # 显式设置updated_at，避免传递NULL值
             )
             db.add(db_score)
+            print(f"DEBUG Oracle: 执行flush操作")
             db.flush()
+            print(f"DEBUG Oracle: flush成功，返回结果: id={db_score.id}")
+            # 刷新对象，确保获取到最新数据
+            db.refresh(db_score)
+            print(f"DEBUG Oracle: refresh成功，返回结果: id={db_score.id}")
+            print(f"DEBUG: 成功向数据库 {db_name} 的 exam_paper_db.t_scores 表写入数据")
             return db_score
         except Exception as e:
-            print(f"Oracle特定处理失败: {str(e)}")
+            print(f"DEBUG Oracle特定处理失败: {str(e)}")
             # 打印详细错误信息，便于调试
             import traceback
             traceback.print_exc()
             # 如果Oracle特定处理失败，尝试使用原始SQL语句
             try:
                 # 使用原始SQL插入，避免ORM自动处理的问题
+                sql = "INSERT INTO T_SCORES (user_id, exam_id, score_value, created_at, updated_at) VALUES (:user_id, :exam_id, :score_value, SYSDATE, SYSDATE)"
+                print(f"DEBUG Oracle: 尝试使用原始SQL: {sql}")
+                print(f"DEBUG Oracle: 参数: user_id={score.user_id}, exam_id={score.exam_id}, score_value={score.score_value}")
+                
+                # 执行SQL并获取结果
                 result = db.execute(
-                    text("INSERT INTO T_SCORES (user_id, exam_id, score_value, created_at, updated_at) VALUES (:user_id, :exam_id, :score_value, SYSDATE, SYSDATE) RETURNING id INTO :id"),
+                    text(sql),
                     {
                         'user_id': score.user_id,
                         'exam_id': score.exam_id,
-                        'score_value': score.score_value,
-                        'id': None
+                        'score_value': score.score_value
                     }
                 )
                 db.commit()
+                print(f"DEBUG Oracle: 原始SQL执行成功，影响行数: {result.rowcount}")
+                
+                # 获取插入的ID
+                id_result = db.execute(text("SELECT T_SCORES_SEQ.CURRVAL FROM DUAL"))
+                last_id = id_result.scalar()
+                print(f"DEBUG Oracle: 获取到插入的ID: {last_id}")
+                print(f"DEBUG: 成功向数据库 {db_name} 的 exam_paper_db.t_scores 表写入数据")
+                
                 # 创建一个模拟的Score对象返回
                 return Score(
-                    id=result.lastrowid,
+                    id=last_id,
                     user_id=score.user_id,
                     exam_id=score.exam_id,
                     score_value=score.score_value
                 )
             except Exception as raw_e:
-                print(f"Oracle原始SQL处理失败: {str(raw_e)}")
+                print(f"DEBUG Oracle原始SQL处理失败: {str(raw_e)}")
                 traceback.print_exc()
+                print(f"DEBUG: 向数据库 {db_name} 的 exam_paper_db.t_scores 表写入数据失败")
                 raise
     else:
         # 其他数据库使用默认方式
-        db_score = Score(**score.dict())
-        db.add(db_score)
-        db.flush()
-        return db_score
+        try:
+            db_score = Score(**score.dict())
+            db.add(db_score)
+            print(f"DEBUG: 执行flush操作")
+            db.flush()
+            print(f"DEBUG: flush成功，返回结果: id={db_score.id}")
+            # 刷新对象，确保获取到最新数据
+            db.refresh(db_score)
+            print(f"DEBUG: refresh成功，返回结果: id={db_score.id}")
+            print(f"DEBUG: 成功向数据库 {db_name} 的 exam_paper_db.t_scores 表写入数据")
+            return db_score
+        except Exception as e:
+            print(f"DEBUG 其他数据库写入失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            print(f"DEBUG: 向数据库 {db_name} 的 exam_paper_db.t_scores 表写入数据失败")
+            raise
 
 def update_score(db: Session, score_id: int, score_update: ScoreUpdate):
     """更新成绩"""
@@ -1318,17 +1365,31 @@ def get_questions_details():
     return {"details": details}
 
 @app.get("/api/scores")
-def get_api_scores():
+def get_api_scores(
+    user_id: Optional[int] = None,
+    exam_id: Optional[int] = None,
+    min_score: Optional[float] = None,
+    max_score: Optional[float] = None,
+    limit: int = 10,
+    offset: int = 0
+):
     """
-    获取学生成绩数据列表
+    返回成绩列表，支持分页和过滤
     
-    使用JOIN连接t_scores和t_users表，返回指定字段
-    返回字段：id, user_id, username (从t_users获取), exam_id, score_value, created_at
+    Args:
+        user_id: 用户ID过滤
+        exam_id: 考试ID过滤
+        min_score: 最低分数
+        max_score: 最高分数
+        limit: 每页返回的成绩数量，默认10
+        offset: 偏移量，默认0
     """
     scores = []
+    total = 0
     
     try:
-        # 从MySQL获取数据（作为主库）
+        # 从MySQL获取成绩（作为主库）
+        print("DEBUG: 正在从真实数据库读取成绩数据")
         session = next(get_session('mysql'))
         try:
             # 使用原生SQL实现LEFT JOIN查询，确保即使找不到用户名也能返回成绩记录
@@ -1342,16 +1403,44 @@ def get_api_scores():
                     s.created_at
                 FROM T_SCORES s
                 LEFT JOIN T_USERS u ON s.user_id = u.id
-                ORDER BY s.created_at DESC
+                WHERE 1=1
             """
             
-            result = session.execute(text(sql))
+            # 添加过滤条件
+            params = {}
+            if user_id is not None:
+                sql += " AND s.user_id = :user_id"
+                params["user_id"] = user_id
+            if exam_id is not None:
+                sql += " AND s.exam_id = :exam_id"
+                params["exam_id"] = exam_id
+            if min_score is not None:
+                sql += " AND s.score_value >= :min_score"
+                params["min_score"] = min_score
+            if max_score is not None:
+                sql += " AND s.score_value <= :max_score"
+                params["max_score"] = max_score
             
-            for row in result:
+            # 获取总数
+            count_sql = sql.replace("s.id, s.user_id, u.username, s.exam_id, s.score_value, s.created_at", "COUNT(*)")
+            count_result = session.execute(text(count_sql), params)
+            total = count_result.scalar()
+            
+            # 添加分页和排序
+            sql += " ORDER BY s.created_at DESC"
+            sql += " LIMIT :limit OFFSET :offset"
+            params["limit"] = limit
+            params["offset"] = offset
+            
+            # 执行查询
+            result = session.execute(text(sql), params)
+            rows = result.fetchall()
+            
+            for row in rows:
                 scores.append({
                     'id': row.id,
                     'user_id': row.user_id,
-                    'username': row.username,
+                    'username': row.username if row.username else '未知用户',
                     'exam_id': row.exam_id,
                     'score_value': row.score_value,
                     'created_at': row.created_at.isoformat() if row.created_at else None
@@ -1359,9 +1448,73 @@ def get_api_scores():
         finally:
             session.close()
     except Exception as e:
-        print(f"Error getting scores: {e}")
+        # 如果MySQL失败，尝试从其他数据库获取
+        for db_name in ['sqlserver', 'oracle']:
+            try:
+                session = next(get_session(db_name))
+                try:
+                    # 使用原生SQL实现LEFT JOIN查询
+                    sql = """
+                        SELECT 
+                            s.id,
+                            s.user_id,
+                            u.username,
+                            s.exam_id,
+                            s.score_value,
+                            s.created_at
+                        FROM T_SCORES s
+                        LEFT JOIN T_USERS u ON s.user_id = u.id
+                        WHERE 1=1
+                    """
+                    
+                    # 添加过滤条件
+                    params = {}
+                    if user_id is not None:
+                        sql += " AND s.user_id = :user_id"
+                        params["user_id"] = user_id
+                    if exam_id is not None:
+                        sql += " AND s.exam_id = :exam_id"
+                        params["exam_id"] = exam_id
+                    if min_score is not None:
+                        sql += " AND s.score_value >= :min_score"
+                        params["min_score"] = min_score
+                    if max_score is not None:
+                        sql += " AND s.score_value <= :max_score"
+                        params["max_score"] = max_score
+                    
+                    # 获取总数
+                    count_sql = sql.replace("s.id, s.user_id, u.username, s.exam_id, s.score_value, s.created_at", "COUNT(*)")
+                    count_result = session.execute(text(count_sql), params)
+                    total = count_result.scalar()
+                    
+                    # 添加分页和排序
+                    sql += " ORDER BY s.created_at DESC"
+                    sql += " LIMIT :limit OFFSET :offset"
+                    params["limit"] = limit
+                    params["offset"] = offset
+                    
+                    # 执行查询
+                    result = session.execute(text(sql), params)
+                    rows = result.fetchall()
+                    
+                    for row in rows:
+                        scores.append({
+                            'id': row.id,
+                            'user_id': row.user_id,
+                            'username': row.username if row.username else '未知用户',
+                            'exam_id': row.exam_id,
+                            'score_value': row.score_value,
+                            'created_at': row.created_at.isoformat() if row.created_at else None
+                        })
+                    break  # 如果成功获取，退出循环
+                finally:
+                    session.close()
+            except Exception as e:
+                continue
     
-    return {"scores": scores}
+    # 打印真实成绩条数
+    print(f"当前查询到的真实成绩条数为: {len(scores)}")
+    return scores
 
 @app.get("/api/scores/check-sync")
 def check_scores_sync():
@@ -1531,6 +1684,33 @@ def create_api_score(request: ScoreCreateRequest, current_user: User = Depends(g
                 # 打印详细的错误信息，用于调试
                 import traceback
                 traceback.print_exc()
+        
+        # 记录同步任务，生成SCORE_SYNC记录
+        print("记录同步任务，生成SCORE_SYNC记录...")
+        # 构造payload数据
+        payload = {
+            "user_id": request.user_id,
+            "exam_id": request.exam_id,
+            "score_value": request.score_value
+        }
+        
+        # 获取所有数据库名称
+        all_dbs = list(engines.keys())
+        
+        # 对于每个成功写入的数据库，生成同步任务到其他数据库
+        for source_db in [db for db in request.target_dbs if db not in failed_dbs]:
+            # 需要同步到的目标数据库（除了源数据库之外的所有数据库）
+            target_dbs = [db for db in all_dbs if db != source_db]
+            for target_db in target_dbs:
+                # 记录同步任务
+                log_id = CrossDBManager.record_sync_task(
+                    source_db=source_db,
+                    target_db=target_db,
+                    operation_type="INSERT",
+                    event_type="SCORE_SYNC",
+                    payload=payload
+                )
+                print(f"生成同步任务: 从{source_db}到{target_db}，log_id={log_id}")
         
         if failed_dbs:
             return {
