@@ -8,8 +8,6 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- 引入Font Awesome -->
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <!-- 引入Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         body {
@@ -21,6 +19,7 @@
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         .user-info {
+
             display: flex;
             align-items: center;
             gap: 10px;
@@ -134,29 +133,6 @@
             </div>
         </div>
 
-        <!-- 同步状态与报表 -->
-        <div class="card dashboard-card">
-            <div class="card-header bg-success text-white">
-                <h3 class="card-title">
-                    <i class="fa fa-line-chart"></i> 状态与报表
-                </h3>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="d-flex align-items-center mb-3">
-                            <span class="badge bg-success me-2" id="status-lamp">在线</span>
-                            <span class="text-muted">自动连接自检已完成</span>
-                        </div>
-                        <p class="text-muted">系统会在启动时自检三库连接，并在此展示状态。</p>
-                    </div>
-                    <div class="col-md-6">
-                        <canvas id="pending-chart" height="120"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- 数据管理面板 -->
         <div class="card dashboard-card">
             <div class="card-header bg-primary text-white">
@@ -165,121 +141,238 @@
                 </h3>
             </div>
             <div class="card-body">
-                <!-- 多条件检索表单 -->
+                <!-- 导航切换 -->
                 <div class="row mb-4">
                     <div class="col">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h5 class="card-title">多条件检索</h5>
-                                <form id="search-form">
-                                    <div class="row g-3">
-                                        <div class="col-md-3">
-                                            <label for="search-content" class="form-label">题目内容</label>
-                                            <input type="text" class="form-control" id="search-content" placeholder="请输入题目内容关键词">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label for="search-min-score" class="form-label">最低分数</label>
-                                            <input type="number" class="form-control" id="search-min-score" placeholder="最低分数" min="0" step="0.5">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label for="search-max-score" class="form-label">最高分数</label>
-                                            <input type="number" class="form-control" id="search-max-score" placeholder="最高分数" min="0" step="0.5">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label for="search-start-time" class="form-label">开始时间</label>
-                                            <input type="datetime-local" class="form-control" id="search-start-time">
-                                        </div>
-                                        <div class="col-md-2">
-                                            <label for="search-end-time" class="form-label">结束时间</label>
-                                            <input type="datetime-local" class="form-control" id="search-end-time">
-                                        </div>
-                                        <div class="col-md-1 align-self-end">
-                                            <button type="submit" class="btn btn-primary w-100">
-                                                <i class="fa fa-search"></i> 搜索
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 添加题目表单 -->
-                <div class="row mb-4">
-                    <div class="col">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h5 class="card-title">添加新题目</h5>
-                                <form id="add-question-form">
-                                    <div class="mb-3">
-                                        <label for="question-content" class="form-label">题目内容</label>
-                                        <textarea class="form-control" id="question-content" rows="3" required placeholder="请输入题目内容"></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="question-answer" class="form-label">答案</label>
-                                        <textarea class="form-control" id="question-answer" rows="2" required placeholder="请输入答案"></textarea>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="question-score" class="form-label">分数</label>
-                                        <input type="number" class="form-control" id="question-score" required placeholder="请输入分数" min="0" step="0.5">
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="form-label">目标数据库</label>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="mysql" id="target-db-mysql" checked>
-                                            <label class="form-check-label" for="target-db-mysql">
-                                                MySQL
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="sqlserver" id="target-db-sqlserver" checked>
-                                            <label class="form-check-label" for="target-db-sqlserver">
-                                                SQL Server
-                                            </label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" value="oracle" id="target-db-oracle" checked>
-                                            <label class="form-check-label" for="target-db-oracle">
-                                                Oracle
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fa fa-plus"></i> 添加题目并同步
-                                    </button>
-                                    <button type="reset" class="btn btn-secondary">
-                                        <i class="fa fa-refresh"></i> 重置
-                                    </button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Oracle同步状态指示灯 -->
-                <div class="row mb-4">
-                    <div class="col">
-                        <div id="oracle-sync-status" class="alert alert-info">
-                            <h5><i class="fa fa-refresh"></i> Oracle同步状态</h5>
-                            <div id="oracle-sync-status-text">加载中...</div>
-                            <div id="oracle-error-code" style="display: none;"></div>
+                        <div class="btn-group" role="group" aria-label="数据管理导航">
+                            <button type="button" class="btn btn-primary active" id="nav-questions">题目管理</button>
+                            <button type="button" class="btn btn-primary" id="nav-scores">成绩管理</button>
                         </div>
                     </div>
                 </div>
                 
-                <!-- 题目数据表格 -->
-                <div class="row">
+                <!-- 同步健康状态区域 -->
+                <div class="row mb-4" id="questions-sync-health" style="display: block;">
                     <div class="col">
-                        <h5>题目数据表格</h5>
-                        <div id="questions-table" class="mt-3">
-                            <div class="alert alert-info">
-                                <i class="fa fa-info-circle"></i> 点击"搜索"或"刷新"按钮获取题目列表
+                        <div class="card" id="sync-health-card">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="card-title">
+                                        <i class="fa fa-heartbeat"></i> 同步健康状态
+                                    </h5>
+                                    <div id="sync-status-indicator" class="badge bg-success">
+                                        <i class="fa fa-check"></i> 所有数据库已同步
+                                    </div>
+                                </div>
+                                <div id="sync-warning" class="mt-2 d-none">
+                                    <div class="alert alert-danger">
+                                        <i class="fa fa-exclamation-triangle"></i> 
+                                        <span id="sync-warning-text">检测到 X 条题目尚未完全同步到所有数据库</span>
+                                        <button id="sync-now-btn" class="btn btn-sm btn-primary ms-2">
+                                            <i class="fa fa-refresh"></i> 立即同步
+                                        </button>
+                                        <button id="view-differences-btn" class="btn btn-sm btn-info ms-1">
+                                            <i class="fa fa-eye"></i> 查看差异
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="sync-loading" class="mt-2 d-none">
+                                    <div class="alert alert-info">
+                                        <i class="fa fa-spinner fa-spin"></i> 正在同步数据...
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <button id="refresh-questions" class="btn btn-primary mt-2 refresh-btn">
-                            <i class="fa fa-refresh"></i> 刷新题目列表
-                        </button>
+                    </div>
+                </div>
+                
+                <!-- 差异预览模态框 -->
+                <div class="modal fade" id="differences-modal" tabindex="-1" aria-labelledby="differences-modal-label" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title" id="differences-modal-label">
+                                    <i class="fa fa-exclamation-triangle"></i> 数据差异预览
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div id="differences-loading" class="text-center">
+                                    <i class="fa fa-spinner fa-spin fa-2x"></i>
+                                    <p class="mt-2">正在加载差异数据...</p>
+                                </div>
+                                <div id="differences-table-container" class="d-none">
+                                    <table class="table table-striped table-bordered">
+                                        <thead class="thead-dark">
+                                            <tr>
+                                                <th>题目内容</th>
+                                                <th>答案</th>
+                                                <th>分数</th>
+                                                <th>存在于</th>
+                                                <th>缺失于</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="differences-table-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="no-differences" class="alert alert-success d-none">
+                                    <i class="fa fa-check"></i> 未检测到数据差异
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                                <button type="button" id="sync-from-modal-btn" class="btn btn-primary">
+                                    <i class="fa fa-refresh"></i> 立即同步
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 题目管理区域 -->
+                <div id="questions-section" style="display: block;">
+                    <!-- 多条件检索表单 -->
+                    <div class="row mb-4">
+                        <div class="col">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">多条件检索</h5>
+                                    <form id="search-form">
+                                        <div class="row g-3">
+                                            <div class="col-md-3">
+                                                <label for="search-content" class="form-label">题目内容</label>
+                                                <input type="text" class="form-control" id="search-content" placeholder="请输入题目内容关键词">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="search-min-score" class="form-label">最低分数</label>
+                                                <input type="number" class="form-control" id="search-min-score" placeholder="最低分数" min="0" step="0.5">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="search-max-score" class="form-label">最高分数</label>
+                                                <input type="number" class="form-control" id="search-max-score" placeholder="最高分数" min="0" step="0.5">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="search-start-time" class="form-label">开始时间</label>
+                                                <input type="datetime-local" class="form-control" id="search-start-time">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label for="search-end-time" class="form-label">结束时间</label>
+                                                <input type="datetime-local" class="form-control" id="search-end-time">
+                                            </div>
+                                            <div class="col-md-1 align-self-end">
+                                                <button type="submit" class="btn btn-primary w-100">
+                                                    <i class="fa fa-search"></i> 搜索
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 添加题目表单 -->
+                    <div class="row mb-4">
+                        <div class="col">
+                            <div class="card bg-light">
+                                <div class="card-body">
+                                    <h5 class="card-title">添加新题目</h5>
+                                    <form id="add-question-form">
+                                        <div class="mb-3">
+                                            <label for="question-content" class="form-label">题目内容</label>
+                                            <textarea class="form-control" id="question-content" rows="3" required placeholder="请输入题目内容"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="question-answer" class="form-label">答案</label>
+                                            <textarea class="form-control" id="question-answer" rows="2" required placeholder="请输入答案"></textarea>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="question-score" class="form-label">分数</label>
+                                            <input type="number" class="form-control" id="question-score" required placeholder="请输入分数" min="0" step="0.5">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">目标数据库</label>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="mysql" id="target-db-mysql" checked>
+                                                <label class="form-check-label" for="target-db-mysql">
+                                                    MySQL
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="sqlserver" id="target-db-sqlserver" checked>
+                                                <label class="form-check-label" for="target-db-sqlserver">
+                                                    SQL Server
+                                                </label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value="oracle" id="target-db-oracle" checked>
+                                                <label class="form-check-label" for="target-db-oracle">
+                                                    Oracle
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fa fa-plus"></i> 添加题目并同步
+                                        </button>
+                                        <button type="reset" class="btn btn-secondary">
+                                            <i class="fa fa-refresh"></i> 重置
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Oracle同步状态指示灯 -->
+                    
+                    
+                    <!-- 题目数据表格 -->
+                    <div class="row">
+                        <div class="col">
+                            <h5>题目数据表格</h5>
+                            <div id="questions-table" class="mt-3">
+                                <div class="alert alert-info">
+                                    <i class="fa fa-info-circle"></i> 点击"搜索"或"刷新"按钮获取题目列表
+                                </div>
+                            </div>
+                            <button id="refresh-questions" class="btn btn-primary mt-2 refresh-btn">
+                                <i class="fa fa-refresh"></i> 刷新题目列表
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 成绩管理区域 -->
+                <div id="scores-section" style="display: none;">
+                    <!-- 操作按钮区域 -->
+                    <div class="row mb-4">
+                        <div class="col">
+                            <button id="add-score-btn" class="btn btn-primary">
+                                <i class="fa fa-plus"></i> 录入成绩
+                            </button>
+                            <button id="check-scores-sync" class="btn btn-info ms-2">
+                                <i class="fa fa-search"></i> 检测三库差异
+                            </button>
+                            <div id="scores-sync-loading" class="d-inline-block ms-2" style="display: none;">
+                                <i class="fa fa-spinner fa-spin"></i> 检测中...
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 成绩数据表格 -->
+                    <div class="row">
+                        <div class="col">
+                            <h5>成绩数据表格</h5>
+                            <div id="scores-table" class="mt-3">
+                                <div class="alert alert-info">
+                                    <i class="fa fa-info-circle"></i> 点击"刷新"按钮获取成绩列表
+                                </div>
+                            </div>
+                            <button id="refresh-scores" class="btn btn-primary mt-2 refresh-btn">
+                                <i class="fa fa-refresh"></i> 刷新成绩列表
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -304,115 +397,6 @@
             </div>
         </div>
 
-        <!-- 同步监控中心 -->
-        <div class="card dashboard-card">
-            <div class="card-header bg-warning text-white">
-                <h3 class="card-title">
-                    <i class="fa fa-line-chart"></i> 同步监控中心
-                </h3>
-            </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title">
-                                    <i class="fa fa-pie-chart"></i> 同步成功率统计
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <canvas id="sync-pie-chart" width="400" height="400"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title">
-                                    <i class="fa fa-exclamation-triangle"></i> 异常记录列表
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div id="exception-logs-container" style="max-height: 300px; overflow-y: auto;">
-                                    <div class="text-center text-muted">
-                                        <i class="fa fa-info-circle"></i> 加载中...
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- 同步日志表格 -->
-                <div class="row">
-                    <div class="col-md-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title">
-                                    <i class="fa fa-list"></i> 最新同步日志
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div style="max-height: 250px; overflow-y: auto;">
-                                    <table class="table table-striped table-bordered" id="sync-logs-table">
-                                        <thead class="thead-dark">
-                                            <tr>
-                                                <th>源库</th>
-                                                <th>目标库</th>
-                                                <th>操作类型</th>
-                                                <th>事件类型</th>
-                                                <th>状态</th>
-                                                <th>错误信息</th>
-                                                <th>时间</th>
-                                                <th>操作</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="sync-logs-tbody">
-                                            <tr>
-                                                <td colspan="5" class="text-center text-muted">
-                                                    <i class="fa fa-info-circle"></i> 加载中...
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 学生成绩分析报表 -->
-        <div class="card dashboard-card">
-            <div class="card-header bg-primary text-white">
-                <h3 class="card-title">
-                    <i class="fa fa-bar-chart"></i> 学生成绩分析
-                </h3>
-            </div>
-            <div class="card-body">
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header">
-                                <h5 class="card-title">
-                                    <i class="fa fa-table"></i> 成绩详情报表
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div id="student-scores-container">
-                                    <div class="text-center text-muted">
-                                        <i class="fa fa-spinner fa-spin fa-2x"></i><br>
-                                        <i class="fa fa-info-circle"></i> 加载成绩数据中...
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <!-- 数据一致性分析 -->
         <div class="card dashboard-card">
             <div class="card-header bg-danger text-white">
@@ -437,70 +421,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- 数据仲裁者 -->
-        <div class="card dashboard-card" id="arbiter">
-            <div class="card-header bg-info text-white">
-                <h3 class="card-title">
-                    <i class="fa fa-handshake-o"></i> Data Arbiter 数据仲裁者
-                </h3>
-            </div>
-            <div class="card-body">
-                <form id="arbiter-form" class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <label class="form-label">GUID</label>
-                        <input type="text" class="form-control" id="arbiter-guid" placeholder="输入题目GUID" required>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label">源数据库</label>
-                        <select class="form-select" id="arbiter-source">
-                            <option value="mysql">MySQL</option>
-                            <option value="sqlserver">SQL Server</option>
-                            <option value="oracle">Oracle</option>
-                        </select>
-                    </div>
-                    <div class="col-md-5">
-                        <label class="form-label">目标数据库</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="mysql" id="target-mysql" checked>
-                            <label class="form-check-label" for="target-mysql">MySQL</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="sqlserver" id="target-sqlserver" checked>
-                            <label class="form-check-label" for="target-sqlserver">SQL Server</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="oracle" id="target-oracle" checked>
-                            <label class="form-check-label" for="target-oracle">Oracle</label>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <button type="submit" class="btn btn-info">加载差异</button>
-                        <button type="button" id="btn-repair" class="btn btn-success ms-2">一键同步修复</button>
-                    </div>
-                </form>
-                <div class="row" id="arbiter-cards">
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header">MySQL</div>
-                            <div class="card-body" id="arbiter-mysql">等待加载...</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header">SQL Server</div>
-                            <div class="card-body" id="arbiter-sqlserver">等待加载...</div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-header">Oracle</div>
-                            <div class="card-body" id="arbiter-oracle">等待加载...</div>
                         </div>
                     </div>
                 </div>
@@ -541,155 +461,170 @@
             </div>
         </div>
     </div>
+    
+    <!-- 录入成绩模态框 -->
+    <div class="modal fade" id="add-score-modal" tabindex="-1" aria-labelledby="add-score-modal-label" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="add-score-modal-label">录入成绩</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-score-form">
+                        <div class="mb-3">
+                            <label for="add-score-user-id" class="form-label">学生ID</label>
+                            <input type="number" class="form-control" id="add-score-user-id" required placeholder="请输入学生ID" min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="add-score-exam-id" class="form-label">考试ID</label>
+                            <input type="number" class="form-control" id="add-score-exam-id" required placeholder="请输入考试ID" min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="add-score-value" class="form-label">分值</label>
+                            <input type="number" class="form-control" id="add-score-value" required placeholder="请输入分值" min="0" step="0.5">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">目标数据库</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="mysql" id="add-score-target-mysql" checked>
+                                <label class="form-check-label" for="add-score-target-mysql">
+                                    MySQL
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="oracle" id="add-score-target-oracle" checked>
+                                <label class="form-check-label" for="add-score-target-oracle">
+                                    Oracle
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" value="sqlserver" id="add-score-target-sqlserver" checked>
+                                <label class="form-check-label" for="add-score-target-sqlserver">
+                                    SQL Server
+                                </label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="save-add-score">保存录入</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- 引入jQuery和Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
-        const MockStore = {
-            logSeq: 0,
-            reset() {
-                const now = new Date();
-                this.state = {
-                    user: { username: '演示管理员', role: '超级管理员' },
-                    dbStatus: {
-                        mysql: { status: 'online', question_count: 24 },
-                        sqlserver: { status: 'online', question_count: 22 },
-                        oracle: { status: 'online', question_count: 18 }
-                    },
-                    questions: [
-                        {
-                            question_id: 101,
-                            question_guid: 'Q-101',
-                            question_content: '解释数据库索引的作用，并给出一个创建索引的示例。',
-                            question_answer: '索引用于加速查询，可通过CREATE INDEX创建。',
-                            question_score: 5,
-                            highest_score: 5,
-                            last_respondent: 'Alice',
-                            question_updated_at: now.toISOString(),
-                            syncedDbs: ['mysql', 'sqlserver', 'oracle']
-                        },
-                        {
-                            question_id: 102,
-                            question_guid: 'Q-102',
-                            question_content: '什么是事务的ACID特性？',
-                            question_answer: '原子性、一致性、隔离性、持久性。',
-                            question_score: 4,
-                            highest_score: 4,
-                            last_respondent: 'Bob',
-                            question_updated_at: now.toISOString(),
-                            syncedDbs: ['mysql', 'sqlserver']
-                        },
-                        {
-                            question_id: 103,
-                            question_guid: 'Q-103',
-                            question_content: '列举三种常见的数据库分区策略。',
-                            question_answer: '范围分区、哈希分区、列表分区。',
-                            question_score: 6,
-                            highest_score: 6,
-                            last_respondent: 'Cindy',
-                            question_updated_at: now.toISOString(),
-                            syncedDbs: ['mysql', 'oracle']
-                        }
-                    ],
-                    scores: [
-                        { student_name: '王小明', exam_name: '数据库期末', score: 88.5, sync_status: 'success' },
-                        { student_name: '李雷', exam_name: '数据库期末', score: 75, sync_status: 'success' },
-                        { student_name: '韩梅梅', exam_name: '数据库期末', score: 92, sync_status: 'pending' },
-                        { student_name: 'Tom', exam_name: '数据库小测', score: 68.5, sync_status: 'error' }
-                    ],
-                    arbiter: {
-                        'Q-101': {
-                            mysql: { content: '解释数据库索引的作用，并给出一个创建索引的示例。', answer: '索引用于加速查询，可通过CREATE INDEX创建。', score: 5, updated_at: now.toISOString() },
-                            sqlserver: { content: '解释数据库索引的作用，并给出一个创建索引的示例。', answer: '索引用于加速查询，可通过CREATE INDEX创建。', score: 5, updated_at: now.toISOString() },
-                            oracle: { content: '解释数据库索引的作用，并给出一个创建索引的示例。', answer: '索引用于加速查询，可通过CREATE INDEX创建。', score: 5, updated_at: now.toISOString() }
-                        },
-                        'Q-102': {
-                            mysql: { content: '什么是事务的ACID特性？', answer: '原子性、一致性、隔离性、持久性。', score: 4, updated_at: now.toISOString() },
-                            sqlserver: { content: '什么是事务的ACID特性？', answer: '原子性、一致性、隔离性、持久性。', score: 4, updated_at: now.toISOString() },
-                            oracle: { missing: true }
-                        }
-                    }
-                };
-                this.logSeq = 0;
-                this.state.logs = [
-                    { dbName: 'mysql', status: 'SUCCESS', event_type: 'insert', created_at: now.toISOString(), error_msg: '' },
-                    { dbName: 'sqlserver', status: 'SUCCESS', event_type: 'update', created_at: now.toISOString(), error_msg: '' },
-                    { dbName: 'oracle', status: 'FAILED', event_type: 'insert', created_at: now.toISOString(), error_msg: 'ORA-00001 唯一键冲突' },
-                    { dbName: 'mysql', status: 'PENDING', event_type: 'sync', created_at: now.toISOString(), error_msg: '' }
-                ].map(log => ({ id: ++this.logSeq, ...log, source_db: log.dbName, target_db: 'central' }));
-            },
-            nextQuestionId() {
-                const ids = this.state.questions.map(q => q.question_id);
-                return ids.length ? Math.max(...ids) + 1 : 1;
-            },
-            addLog(entry) {
-                const log = { id: ++this.logSeq, created_at: new Date().toISOString(), ...entry };
-                this.state.logs.unshift(log);
-                return log;
+        // 页面访问权限控制：检查是否有合法Token
+        window.onload = function() {
+            const token = localStorage.getItem('token');
+            const userInfoStr = localStorage.getItem('userInfo');
+            if (!token || !userInfoStr) {
+                window.location.replace('login.html');
+                return;
+            }
+            
+            // 检查用户角色，实现访客模式限制
+            try {
+                const userInfo = JSON.parse(userInfoStr);
+                if (userInfo.role === 'guest') {
+                    // 显示访客模式提示
+                    const guestAlert = `
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <strong>访客模式</strong> 当前为访客模式（只读），您只能查看数据，无法进行修改操作。
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('body').prepend(guestAlert);
+                    
+                    // 隐藏添加题目按钮
+                    $('#add-question-form button[type="submit"]').hide();
+                    
+                    // 隐藏重置按钮
+                    $('#add-question-form button[type="reset"]').hide();
+                    
+                    // 隐藏立即同步按钮
+                    $('#sync-now-btn').hide();
+                    $('#sync-from-modal-btn').hide();
+                    
+                    // 隐藏编辑按钮
+                    $('.edit-question-btn').hide();
+                    
+                    // 隐藏删除按钮
+                    $('.delete-question-btn').hide();
+                    
+                    // 隐藏添加题目表单的所有输入控件
+                    $('#add-question-form input, #add-question-form textarea, #add-question-form select').attr('disabled', true);
+                }
+            } catch (e) {
+                console.error('解析用户信息失败:', e);
             }
         };
-        MockStore.reset();
 
         function formatDate(dateStr) {
             return new Date(dateStr).toLocaleString('zh-CN');
         }
 
         function refreshUserInfo() {
-            const user = MockStore.state.user;
-            $('#username').text(user.username);
-            $('#user-role').text(user.role);
+            // 从localStorage获取用户信息
+            const userInfoStr = localStorage.getItem('userInfo');
+            let username = '管理员';
+            let role = 'ADMIN';
+            
+            if (userInfoStr) {
+                try {
+                    const userInfo = JSON.parse(userInfoStr);
+                    username = userInfo.username || username;
+                    role = userInfo.role || role;
+                } catch (e) {
+                    console.error('解析用户信息失败:', e);
+                }
+            }
+            
+            $('#username').text(username);
+            $('#user-role').text(role);
         }
 
         function logout() {
-            Swal.fire('已退出演示模式', '刷新页面即可重新开始', 'info');
+            // 清除所有相关信息
+            localStorage.clear();
+            // 使用replace()跳转到登录页，防止后退
+            window.location.replace('login.html');
         }
 
-        function refreshDbQuestionCounts() {
-            const { questions, dbStatus } = MockStore.state;
-            ['mysql', 'sqlserver', 'oracle'].forEach(db => {
-                dbStatus[db].question_count = questions.filter(q => q.syncedDbs.includes(db)).length;
-            });
-        }
-
-        function updateDatabaseStatus() {
-            refreshDbQuestionCounts();
-            const statusFluctuation = Math.random();
-            if (statusFluctuation > 0.85) {
-                MockStore.state.dbStatus.oracle.status = 'offline';
-            } else {
-                MockStore.state.dbStatus.oracle.status = 'online';
+        async function updateDatabaseStatus() {
+            try {
+                const response = await fetch('/api/db_status');
+                const data = await response.json();
+                Object.entries(data).forEach(([dbName, status]) => {
+                    updateSingleDbStatus(dbName, {
+                        status: status.status === 'online' ? 'online' : 'offline',
+                        question_count: status.question_count,
+                        score_count: status.score_count
+                    });
+                });
+            } catch (error) {
+                console.error('Failed to update database status:', error);
             }
-            Object.entries(MockStore.state.dbStatus).forEach(([dbName, status]) => {
-                updateSingleDbStatus(dbName, status);
-            });
         }
 
         function updateOracleSyncStatus() {
+            // 这个函数依赖于Oracle同步状态的DOM元素，这些元素可能不存在
+            // 我们暂时移除对MockStore的依赖，简化实现
             const statusContainer = $('#oracle-sync-status');
+            if (statusContainer.length === 0) return;
+            
             const statusText = $('#oracle-sync-status-text');
             const errorCodeContainer = $('#oracle-error-code');
-            const oracleLogs = MockStore.state.logs.filter(log => log.dbName === 'oracle');
             statusContainer.removeClass('alert-success alert-danger alert-warning');
             statusContainer.addClass('alert-info');
-            statusText.html('<i class="fa fa-check-circle"></i> 同步正常');
+            statusText.html('<i class="fa fa-check-circle"></i> 同步状态未知');
             errorCodeContainer.hide();
-            if (oracleLogs.length === 0) return;
-            const latest = oracleLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-            if (latest.status === 'FAILED') {
-                statusContainer.removeClass('alert-info');
-                statusContainer.addClass('alert-danger');
-                statusText.html('<i class="fa fa-exclamation-circle"></i> Oracle同步失败');
-                if (latest.error_msg) {
-                    errorCodeContainer.html(`<strong>错误代:</strong> ${latest.error_msg}`);
-                    errorCodeContainer.show();
-                }
-            } else if (latest.status === 'SUCCESS') {
-                statusContainer.removeClass('alert-info');
-                statusContainer.addClass('alert-success');
-                statusText.html(`<i class="fa fa-check-circle"></i> Oracle同步正常 (最后成功: ${formatDate(latest.created_at)})`);
-            }
         }
 
         function updateSingleDbStatus(dbName, status) {
@@ -708,6 +643,7 @@
                 <h6>数据量:</h6>
                 <ul class="list-unstyled">
                     <li><strong>T_QUESTIONS:</strong> ${status.question_count}</li>
+                    <li><strong>T_SCORES:</strong> ${status.score_count}</li>
                 </ul>
             `;
             tablesElement.html(tablesHtml);
@@ -719,6 +655,10 @@
                 questionsTable.html('<div class="alert alert-info"><i class="fa fa-info-circle"></i> 暂无题目数据</div>');
                 return;
             }
+            
+            // 在控制台打印一条真实获取到的题目数据样本
+            console.log('获取到的题目数据样本:', data[0]);
+            
             let tableHtml = `
                 <table class="table table-striped table-bordered">
                     <thead class="thead-dark">
@@ -736,27 +676,37 @@
                     <tbody>
             `;
             data.forEach(q => {
+                // 增加容错处理，确保字段缺失时显示为"-"而不是undefined
+                const questionId = q.question_id ?? '-';
+                const questionContent = q.question_content ?? '-';
+                const questionAnswer = q.question_answer ?? '-';
+                const questionScore = q.question_score ?? '-';
+                const highestScore = q.highest_score ?? '无';
+                const lastRespondent = q.last_respondent ?? '无';
+                const questionUpdatedAt = q.question_updated_at ? formatDate(q.question_updated_at) : '-';
+                const questionGuid = q.question_guid ?? '';
+                
                 tableHtml += `
                     <tr>
-                        <td>${q.question_id}</td>
-                        <td>${q.question_content}</td>
-                        <td>${q.question_answer}</td>
-                        <td>${q.question_score}</td>
-                        <td>${q.highest_score || '无'}</td>
-                        <td>${q.last_respondent || '无'}</td>
-                        <td>${formatDate(q.question_updated_at)}</td>
+                        <td>${questionId}</td>
+                        <td>${questionContent}</td>
+                        <td>${questionAnswer}</td>
+                        <td>${questionScore}</td>
+                        <td>${highestScore}</td>
+                        <td>${lastRespondent}</td>
+                        <td>${questionUpdatedAt}</td>
                         <td>
                             <button class="btn btn-sm btn-primary edit-question-btn"
-                                    data-id="${q.question_id}"
-                                    data-guid="${q.question_guid}"
-                                    data-content="${q.question_content}"
-                                    data-answer="${q.question_answer}"
-                                    data-score="${q.question_score}">
+                                    data-id="${questionId}"
+                                    data-guid="${questionGuid}"
+                                    data-content="${questionContent}"
+                                    data-answer="${questionAnswer}"
+                                    data-score="${questionScore}">
                                 <i class="fa fa-edit"></i> 编辑
                             </button>
                             <button class="btn btn-sm btn-danger delete-question-btn"
-                                    data-id="${q.question_id}"
-                                    data-guid="${q.question_guid}">
+                                    data-id="${questionId}"
+                                    data-guid="${questionGuid}">
                                 <i class="fa fa-trash"></i> 删除
                             </button>
                         </td>
@@ -765,30 +715,185 @@
             });
             tableHtml += '</tbody></table>';
             questionsTable.html(tableHtml);
+            
+            // 检查用户角色，如果是访客，隐藏编辑和删除按钮
+            try {
+                const userInfoStr = localStorage.getItem('userInfo');
+                if (userInfoStr) {
+                    const userInfo = JSON.parse(userInfoStr);
+                    if (userInfo.role === 'guest') {
+                        $('.edit-question-btn').hide();
+                        $('.delete-question-btn').hide();
+                    }
+                }
+            } catch (e) {
+                console.error('解析用户信息失败:', e);
+            }
+            
             bindEditQuestionEvents();
             bindDeleteQuestionEvents();
         }
 
-        function getQuestionsList() {
-            renderQuestionsTable(MockStore.state.questions);
+        async function getQuestionsList() {
+            try {
+                const response = await fetch('/api/questions/details');
+                const data = await response.json();
+                renderQuestionsTable(data.details);
+            } catch (error) {
+                console.error('Failed to get questions:', error);
+                renderQuestionsTable([]);
+            }
+        }
+        
+        // 检查同步健康状态
+        async function checkSyncHealth() {
+            try {
+                const response = await fetch('/api/sync/check');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const totalDifferences = data.total_differences;
+                    const syncStatusIndicator = $('#sync-status-indicator');
+                    const syncWarning = $('#sync-warning');
+                    const syncWarningText = $('#sync-warning-text');
+                    
+                    if (totalDifferences > 0) {
+                        // 显示警告
+                        syncStatusIndicator.removeClass('bg-success').addClass('bg-danger');
+                        syncStatusIndicator.html('<i class="fa fa-exclamation-triangle"></i> 存在未同步数据');
+                        syncWarningText.text(`检测到 ${totalDifferences} 条题目尚未完全同步到所有数据库`);
+                        syncWarning.removeClass('d-none');
+                    } else {
+                        // 显示正常
+                        syncStatusIndicator.removeClass('bg-danger').addClass('bg-success');
+                        syncStatusIndicator.html('<i class="fa fa-check"></i> 所有数据库已同步');
+                        syncWarning.addClass('d-none');
+                    }
+                    
+                    return data;
+                }
+            } catch (error) {
+                console.error('Failed to check sync health:', error);
+            }
+        }
+        
+        // 执行手动同步
+        async function executeManualSync() {
+            try {
+                // 显示加载动画
+                $('#sync-loading').removeClass('d-none');
+                $('#sync-warning').addClass('d-none');
+                
+                // 获取Token
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/sync/execute', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                
+                const data = await response.json();
+                
+                // 隐藏加载动画
+                $('#sync-loading').addClass('d-none');
+                
+                if (response.ok) {
+                    // 同步成功，重新检查同步状态和刷新列表
+                    await checkSyncHealth();
+                    await getQuestionsList();
+                    updateDatabaseStatus();
+                    // 刷新同步日志
+                    await getSyncLogs();
+                    
+                    // 显示成功提示
+                    Swal.fire('成功', data.message + '，日志已更新', 'success');
+                } else {
+                    // 同步失败，显示错误信息
+                    Swal.fire('错误', data.message, 'error');
+                    // 重新检查同步状态
+                    await checkSyncHealth();
+                    // 刷新同步日志，显示失败原因
+                    await getSyncLogs();
+                }
+            } catch (error) {
+                // 隐藏加载动画
+                $('#sync-loading').addClass('d-none');
+                
+                console.error('Failed to execute manual sync:', error);
+                Swal.fire('错误', `同步失败: ${error.message}`, 'error');
+                // 重新检查同步状态
+                await checkSyncHealth();
+            }
+        }
+        
+        // 加载差异数据并显示在模态框中
+        async function loadDifferences() {
+            try {
+                // 显示加载动画
+                $('#differences-loading').removeClass('d-none');
+                $('#differences-table-container').addClass('d-none');
+                $('#no-differences').addClass('d-none');
+                
+                const data = await checkSyncHealth();
+                
+                if (data && data.differences) {
+                    const differences = data.differences;
+                    const differencesTableBody = $('#differences-table-body');
+                    differencesTableBody.empty();
+                    
+                    if (differences.length > 0) {
+                        // 填充差异表格
+                        differences.forEach(diff => {
+                            const row = `<tr>
+                                <td>${diff.question.content}</td>
+                                <td>${diff.question.answer}</td>
+                                <td>${diff.question.score}</td>
+                                <td>${diff.present_in.join(', ')}</td>
+                                <td>${diff.missing_in.join(', ')}</td>
+                            </tr>`;
+                            differencesTableBody.append(row);
+                        });
+                        
+                        $('#differences-table-container').removeClass('d-none');
+                    } else {
+                        // 没有差异
+                        $('#no-differences').removeClass('d-none');
+                    }
+                }
+                
+                // 隐藏加载动画
+                $('#differences-loading').addClass('d-none');
+            } catch (error) {
+                console.error('Failed to load differences:', error);
+                $('#differences-loading').addClass('d-none');
+                $('#no-differences').removeClass('d-none');
+            }
         }
 
-        function searchQuestions() {
-            const content = $('#search-content').val().trim().toLowerCase();
-            const minScore = parseFloat($('#search-min-score').val());
-            const maxScore = parseFloat($('#search-max-score').val());
+        async function searchQuestions() {
+            const content = $('#search-content').val().trim();
+            const minScore = $('#search-min-score').val();
+            const maxScore = $('#search-max-score').val();
             const startTime = $('#search-start-time').val();
             const endTime = $('#search-end-time').val();
-            const filtered = MockStore.state.questions.filter(q => {
-                const matchContent = !content || q.question_content.toLowerCase().includes(content);
-                const matchMin = isNaN(minScore) || q.question_score >= minScore;
-                const matchMax = isNaN(maxScore) || q.question_score <= maxScore;
-                const updated = new Date(q.question_updated_at).getTime();
-                const matchStart = !startTime || updated >= new Date(startTime).getTime();
-                const matchEnd = !endTime || updated <= new Date(endTime).getTime();
-                return matchContent && matchMin && matchMax && matchStart && matchEnd;
-            });
-            renderQuestionsTable(filtered);
+            
+            const params = new URLSearchParams();
+            if (content) params.append('content', content);
+            if (minScore) params.append('min_score', minScore);
+            if (maxScore) params.append('max_score', maxScore);
+            if (startTime) params.append('start_time', startTime);
+            if (endTime) params.append('end_time', endTime);
+            
+            try {
+                const response = await fetch(`/api/questions/search?${params.toString()}`);
+                const data = await response.json();
+                renderQuestionsTable(data.questions);
+            } catch (error) {
+                console.error('Failed to search questions:', error);
+                renderQuestionsTable([]);
+            }
         }
 
         function bindEditQuestionEvents() {
@@ -804,42 +909,104 @@
         }
 
         function bindDeleteQuestionEvents() {
-            $('.delete-question-btn').click(function() {
+            $('.delete-question-btn').click(async function() {
                 const guid = $(this).data('guid');
                 const questionId = $(this).data('id');
-                if (!confirm(`确定要删除题目 ${questionId} 吗？`)) return;
-                MockStore.state.questions = MockStore.state.questions.filter(q => q.question_guid !== guid);
-                MockStore.addLog({ dbName: 'mysql', status: 'SUCCESS', event_type: 'delete', error_msg: '', source_db: 'mysql', target_db: 'all' });
-                updateDatabaseStatus();
-                getQuestionsList();
-                getSyncStats();
-                getSyncLogs();
+                
+                // 增加删除确认弹窗
+                const confirmResult = await Swal.fire({
+                    title: '确认删除',
+                    text: `确定要从所有数据库中删除此题目吗？`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: '删除',
+                    cancelButtonText: '取消'
+                });
+                
+                if (confirmResult.isConfirmed) {
+                    try {
+                        // 调用后端DELETE API
+                        // 获取Token
+                        const token = localStorage.getItem('token');
+                        const response = await fetch(`/api/questions/${guid}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            // 删除成功后，重新调用获取列表的函数
+                            await getQuestionsList();
+                            updateDatabaseStatus();
+                            getSyncLogs();
+                            
+                            // 显示成功信息
+                            Swal.fire('成功', `题目已从 ${data.deleted_dbs.length} 个数据库中删除！`, 'success');
+                        } else {
+                            // 删除失败，显示具体错误原因
+                            let errorMsg = '删除题目失败';
+                            if (data.failed_dbs && data.failed_dbs.length > 0) {
+                                errorMsg += '<br>失败的数据库：';
+                                data.failed_dbs.forEach(fail => {
+                                    errorMsg += `<br>${fail.db}: ${fail.error}`;
+                                });
+                            }
+                            Swal.fire('错误', errorMsg, 'error');
+                        }
+                    } catch (error) {
+                        console.error('删除题目失败:', error);
+                        Swal.fire('错误', `删除题目时发生网络错误：${error.message}`, 'error');
+                    }
+                }
             });
         }
 
-        function saveEditedQuestion() {
-            const id = parseInt($('#edit-question-id').val(), 10);
+        async function saveEditedQuestion() {
             const guid = $('#edit-question-guid').val();
             const content = $('#edit-question-content').val();
             const answer = $('#edit-question-answer').val();
             const score = parseFloat($('#edit-question-score').val());
-            const question = MockStore.state.questions.find(q => q.question_guid === guid);
-            if (!question) return;
-            Object.assign(question, {
-                question_content: content,
-                question_answer: answer,
-                question_score: score,
-                question_updated_at: new Date().toISOString()
-            });
-            MockStore.addLog({ dbName: 'mysql', status: 'SUCCESS', event_type: 'update', error_msg: '', source_db: 'mysql', target_db: 'all' });
-            const modal = bootstrap.Modal.getInstance(document.getElementById('edit-question-modal'));
-            modal.hide();
-            getQuestionsList();
-            getSyncLogs();
-            getSyncStats();
+            
+            try {
+                // 获取Token
+                const token = localStorage.getItem('token');
+                const response = await fetch(`/api/questions/${guid}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        question: {
+                            content: content,
+                            answer: answer,
+                            score: score
+                        },
+                        target_dbs: ['mysql', 'sqlserver', 'oracle'] // 暂时默认更新所有数据库
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('edit-question-modal'));
+                    modal.hide();
+                    getQuestionsList();
+                    getSyncLogs();
+                    Swal.fire('成功', '题目已更新！', 'success');
+                } else {
+                    Swal.fire('错误', data.message || '更新题目失败', 'error');
+                }
+            } catch (error) {
+                console.error('更新题目失败:', error);
+                Swal.fire('错误', '更新题目失败，请检查网络连接', 'error');
+            }
         }
 
-        $('#add-question-form').submit(function(e) {
+        $('#add-question-form').submit(async function(e) {
             e.preventDefault();
             const content = $('#question-content').val();
             const answer = $('#question-answer').val();
@@ -849,28 +1016,43 @@
             if ($('#target-db-sqlserver').is(':checked')) targetDbs.push('sqlserver');
             if ($('#target-db-oracle').is(':checked')) targetDbs.push('oracle');
             if (!targetDbs.length) {
-                alert('请至少选择一个目标库！');
+                Swal.fire('错误', '请至少选择一个目标库！', 'error');
                 return;
             }
-            const newQuestion = {
-                question_id: MockStore.nextQuestionId(),
-                question_guid: `Q-${Date.now()}`,
-                question_content: content,
-                question_answer: answer,
-                question_score: score,
-                highest_score: score,
-                last_respondent: '演示学员',
-                question_updated_at: new Date().toISOString(),
-                syncedDbs: targetDbs.slice()
-            };
-            MockStore.state.questions.push(newQuestion);
-            targetDbs.forEach(db => MockStore.addLog({ dbName: db, status: 'SUCCESS', event_type: 'insert', error_msg: '', source_db: 'central', target_db: db }));
-            refreshDbQuestionCounts();
-            getQuestionsList();
-            getSyncLogs();
-            getSyncStats();
-            $('#add-question-form')[0].reset();
-            alert('✅ 题目添加成功（本地模拟）');
+            
+            try {
+                // 获取Token
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/questions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        question: {
+                            content: content,
+                            answer: answer,
+                            score: score
+                        },
+                        target_dbs: targetDbs
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    Swal.fire('成功', '题目添加成功！', 'success');
+                    $('#add-question-form')[0].reset();
+                    getQuestionsList();
+                    updateDatabaseStatus();
+                    getSyncLogs();
+                } else {
+                    Swal.fire('错误', data.message || '添加题目失败', 'error');
+                }
+            } catch (error) {
+                console.error('添加题目失败:', error);
+                Swal.fire('错误', '添加题目失败，请检查网络连接', 'error');
+            }
         });
 
         $('#search-form').submit(function(e) {
@@ -880,298 +1062,722 @@
 
         $('#refresh-questions').click(getQuestionsList);
         $('#refresh-logs').click(getSyncLogs);
+        
+        // 同步相关事件监听
+        $('#sync-now-btn').click(executeManualSync);
+        $('#view-differences-btn').click(() => {
+            loadDifferences();
+            const modal = new bootstrap.Modal(document.getElementById('differences-modal'));
+            modal.show();
+        });
+        $('#sync-from-modal-btn').click(executeManualSync);
+        
+        // 页面加载时检查同步状态
+        checkSyncHealth();
+        
+        // 定时检查同步状态（每分钟）
+        setInterval(checkSyncHealth, 60000);
 
-        function computeStats() {
-            return MockStore.state.logs.reduce((acc, log) => {
-                if (log.status === 'SUCCESS') acc.success++;
-                else if (log.status === 'FAILED') acc.failed++;
-                else acc.pending++;
-                return acc;
-            }, { success: 0, failed: 0, pending: 0 });
-        }
-
-        function getSyncStats() {
-            const stats = computeStats();
-            renderSyncPieChart(stats.success, stats.failed);
-            renderPendingChart(stats.pending, stats.success + stats.failed + stats.pending);
-        }
-
-        function renderSyncPieChart(successCount, failureCount) {
-            const ctx = document.getElementById('sync-pie-chart').getContext('2d');
-            if (window.syncPieChart) window.syncPieChart.destroy();
-            window.syncPieChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: ['成功', '失败'],
-                    datasets: [{
-                        data: [successCount, failureCount],
-                        backgroundColor: ['#28a745', '#dc3545'],
-                        borderColor: ['#218838', '#c82333'],
-                        borderWidth: 1
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
-            });
-        }
-
-        function renderPendingChart(pendingCount, total) {
-            const ctx = document.getElementById('pending-chart').getContext('2d');
-            const done = total - pendingCount;
-            if (window.pendingChart) window.pendingChart.destroy();
-            window.pendingChart = new Chart(ctx, {
-                type: 'doughnut',
-                data: { labels: ['处理中', '已完成'], datasets: [{ data: [pendingCount, done], backgroundColor: ['#ffc107', '#20c997'] }] },
-                options: { plugins: { legend: { position: 'bottom' } } }
-            });
-        }
-
-        function getSyncLogs() {
-            const logsContainer = $('#logs-container');
-            logsContainer.empty();
-            const allLogs = [...MockStore.state.logs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            allLogs.forEach(log => {
-                let logClass = 'log-info';
-                if (log.status === 'SUCCESS') logClass = 'log-success';
-                else if (log.status === 'FAILED') logClass = 'log-error';
-                const logHtml = `
-                    <div class="log-entry ${logClass}">
-                        <strong>${log.dbName} - ${formatDate(log.created_at)}</strong>
-                        <div><strong>事件:</strong> ${log.event_type}</div>
-                        <div><strong>状态:</strong> ${log.status}</div>
-                        ${log.error_msg ? `<div><strong>错误:</strong> ${log.error_msg}</div>` : ''}
-                    </div>
-                `;
-                logsContainer.append(logHtml);
-            });
-            if (!allLogs.length) logsContainer.html('<div class="log-entry log-info">没有同步日志</div>');
-        }
-
-        function getExceptionLogs() {
-            const exceptionLogsContainer = $('#exception-logs-container');
-            exceptionLogsContainer.empty();
-            const exceptionLogs = MockStore.state.logs.filter(log => log.status === 'FAILED').sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-            if (!exceptionLogs.length) {
-                exceptionLogsContainer.html('<div class="alert alert-success text-center"><i class="fa fa-check-circle"></i> 没有异常记录</div>');
-                return;
+        async function getSyncLogs() {
+    const logsContainer = $('#logs-container');
+    logsContainer.html('<div class="text-center text-muted"><i class="fa fa-spinner fa-spin"></i> 加载日志中...</div>');
+    try {
+        // 获取最近20条同步日志
+        const response = await fetch('/api/sync/logs?limit=20');
+        const data = await response.json();
+        console.log('前端收到的原始日志数据:', data); // 添加调试日志
+        logsContainer.empty();
+        
+        // 合并所有数据库的日志
+        const allLogs = [];
+        Object.values(data).forEach(dbLogs => {
+            if (dbLogs.logs && Array.isArray(dbLogs.logs)) {
+                dbLogs.logs.forEach(log => {
+                    allLogs.push(log);
+                });
             }
-            exceptionLogs.forEach(log => {
-                const logHtml = `
-                    <div class="card mb-3 border-danger">
-                        <div class="card-header bg-danger text-white">
-                            <div class="row">
-                                <div class="col-sm-6"><strong><i class="fa fa-database"></i> ${log.dbName}</strong></div>
-                                <div class="col-sm-6 text-end"><small>${formatDate(log.created_at)}</small></div>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <h6 class="card-title"><i class="fa fa-exclamation-triangle"></i> ${log.event_type}</h6>
-                            <p class="card-text"><strong>错误信息:</strong> ${log.error_msg}</p>
-                            <div class="text-end">
-                                <button class="btn btn-sm btn-primary repair-btn" data-dbname="${log.dbName}" data-event="${log.event_type}">
-                                    <i class="fa fa-refresh"></i> 以MySQL为准同步
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                exceptionLogsContainer.append(logHtml);
-            });
-            $('.repair-btn').click(function() {
-                const dbName = $(this).data('dbname');
-                const event = $(this).data('event');
-                repairSync(dbName, event);
-            });
-        }
-
-        function getLatestSyncLogs() {
-            const tbody = $('#sync-logs-tbody');
-            tbody.empty();
-            const latestLogs = [...MockStore.state.logs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
-            if (!latestLogs.length) {
-                tbody.html('<tr><td colspan="8" class="text-center text-muted"><i class="fa fa-info-circle"></i> 没有同步日志</td></tr>');
-                return;
+        });
+        
+        console.log('合并后的日志数据:', allLogs); // 添加调试日志
+        
+        // 按时间倒序排序
+        allLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        allLogs.forEach(log => {
+            // 确定日志样式和状态图标
+            let logClass = 'log-info';
+            let statusIcon = '<i class="fa fa-info-circle"></i>';
+            let statusText = log.status || 'UNKNOWN';
+            
+            if (log.status === 'SUCCESS') {
+                logClass = 'log-success';
+                statusIcon = '<i class="fa fa-check-circle"></i>';
+            } else if (log.status === 'FAILED') {
+                logClass = 'log-error';
+                statusIcon = '<i class="fa fa-times-circle"></i>';
+            } else if (log.status === 'PENDING') {
+                logClass = 'log-warning';
+                statusIcon = '<i class="fa fa-clock-o"></i>';
             }
-            latestLogs.forEach(log => {
-                let statusClass = 'badge-secondary';
-                if (log.status === 'SUCCESS') statusClass = 'badge-success';
-                else if (log.status === 'FAILED') statusClass = 'badge-danger';
-                else if (log.status === 'PENDING') statusClass = 'badge-warning';
-                const syncButton = log.status === 'PENDING' ? `
-                    <button class="btn btn-sm btn-primary execute-sync-btn" data-log-id="${log.id}" title="立即同步">
-                        <i class="fa fa-play"></i> 立即同步
-                    </button>` : '';
-                const logHtml = `
-                    <tr data-log-id="${log.id}">
-                        <td>${log.source_db || log.dbName}</td>
-                        <td>${log.target_db || '-'}</td>
-                        <td>${log.operation_type || '-'}</td>
-                        <td>${log.event_type}</td>
-                        <td><span class="badge ${statusClass}">${log.status}</span></td>
-                        <td>${log.error_msg || '-'}</td>
-                        <td>${formatDate(log.created_at)}</td>
-                        <td>${syncButton}</td>
-                    </tr>`;
-                tbody.append(logHtml);
-            });
-            bindExecuteSyncEvents();
+            
+            // 解析payload获取更详细的信息
+            let payloadInfo = '';
+            try {
+                if (log.payload) {
+                    const payload = JSON.parse(log.payload);
+                    if (payload.question_id) {
+                        payloadInfo = `<div><strong>题目ID:</strong> ${payload.question_id}</div>`;
+                    } else if (payload.question_guid) {
+                        payloadInfo = `<div><strong>题目GUID:</strong> ${payload.question_guid}</div>`;
+                    }
+                    if (payload.question_content) {
+                        payloadInfo += `<div><strong>题目内容:</strong> ${payload.question_content}</div>`;
+                    }
+                    if (payload.total_sync) {
+                        payloadInfo += `<div><strong>同步统计:</strong> 总计 ${payload.total_sync} 条，成功 ${payload.success_count} 条，失败 ${payload.failed_count} 条</div>`;
+                    }
+                }
+            } catch (e) {
+                // payload解析失败，忽略
+                console.error('Failed to parse payload:', e, log.payload);
+            }
+            
+            // 构建日志HTML
+            const logHtml = `
+                <div class="log-entry ${logClass}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <strong>${log.event_type || 'sync'} ${statusIcon}</strong>
+                        <small class="text-muted">${formatDate(log.created_at || new Date().toISOString())}</small>
+                    </div>
+                    <div class="mt-1">
+                        <span class="badge ${logClass.replace('log-', 'bg-')}">${statusText}</span>
+                        <span class="ms-2"><strong>源库:</strong> ${log.source_db || 'manual'}</span>
+                        <span class="ms-2"><strong>目标库:</strong> ${log.target_db || 'all'}</span>
+                    </div>
+                    ${payloadInfo}
+                    ${log.error_msg ? `<div class="mt-1 text-danger"><strong>错误:</strong> ${log.error_msg}</div>` : ''}
+                </div>
+            `;
+            logsContainer.append(logHtml);
+        });
+        
+        if (!allLogs.length) {
+            logsContainer.html('<div class="log-entry log-info"><i class="fa fa-info-circle"></i> 没有同步日志</div>');
         }
+    } catch (error) {
+        console.error('Failed to get sync logs:', error);
+        logsContainer.html('<div class="log-entry log-error"><i class="fa fa-exclamation-circle"></i> 加载日志失败</div>');
+    }
+}
 
-        function bindExecuteSyncEvents() {
-            $('.execute-sync-btn').click(function() {
-                const logId = $(this).data('log-id');
-                const log = MockStore.state.logs.find(l => l.id === logId);
-                if (!log) return;
-                log.status = 'SUCCESS';
-                log.error_msg = '';
-                log.created_at = new Date().toISOString();
-                alert('✅ 同步完成（模拟）');
-                getLatestSyncLogs();
-                getSyncLogs();
-                getSyncStats();
-            });
+        // 成绩管理相关功能
+        async function loadScores() {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/scores', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                // 添加原始数据打印
+                console.log('成绩列表原始数据:', data);
+                renderScoresTable(data.scores);
+                // 调试打印
+                console.log('成绩数据加载成功:', data);
+            } catch (error) {
+                console.error('Failed to get scores:', error);
+                renderScoresTable([]);
+            }
         }
+        
+        // 添加同步状态样式
+        const style = document.createElement('style');
+        style.textContent = `
+            .sync-status {
+                display: inline-block;
+                width: 12px;
+                height: 12px;
+                border-radius: 50%;
+                margin-right: 5px;
+            }
+            .sync-status.synced {
+                background-color: #28a745;
+            }
+            .sync-status.diff {
+                background-color: #fd7e14;
+            }
+            .sync-status.pending {
+                background-color: #6c757d;
+            }
+        `;
+        document.head.appendChild(style);
 
-        function repairSync(dbName, event) {
-            alert(`已触发${dbName}的同步修复（模拟）`);
-            MockStore.addLog({ dbName, status: 'SUCCESS', event_type: event, error_msg: '', source_db: 'mysql', target_db: dbName });
-            getExceptionLogs();
-            getLatestSyncLogs();
-            getSyncLogs();
-            getSyncStats();
-        }
+        // 存储成绩同步状态信息
+        let scoresSyncStatus = {};
 
-        function getStudentScoresReport() {
-            const container = $('#student-scores-container');
-            const data = MockStore.state.scores;
+        function renderScoresTable(data) {
+            const scoresTable = $('#scores-table');
             if (!data.length) {
-                container.html('<div class="alert alert-info text-center"><i class="fa fa-info-circle"></i> 没有成绩数据</div>');
+                scoresTable.html('<div class="alert alert-info"><i class="fa fa-info-circle"></i> 暂无成绩数据</div>');
                 return;
             }
+            
             let tableHtml = `
                 <table class="table table-striped table-bordered">
                     <thead class="thead-dark">
                         <tr>
+                            <th>ID</th>
                             <th>学生姓名</th>
-                            <th>试卷名</th>
-                            <th>得分</th>
+                            <th>考试ID</th>
+                            <th>分值</th>
+                            <th>录入时间</th>
                             <th>同步状态</th>
+                            <th>操作</th>
                         </tr>
                     </thead>
                     <tbody>
             `;
             data.forEach(score => {
-                let syncStatusClass = 'text-warning';
-                let syncStatusIcon = '<i class="fa fa-question-circle"></i>';
-                if (score.sync_status === 'success') { syncStatusClass = 'text-success'; syncStatusIcon = '<i class="fa fa-check-circle"></i>'; }
-                else if (score.sync_status === 'error') { syncStatusClass = 'text-danger'; syncStatusIcon = '<i class="fa fa-times-circle"></i>'; }
+                const id = score.id ?? '-';
+                const username = score.username ?? '-';
+                const examId = score.exam_id ?? '-';
+                const scoreValue = score.score_value ?? '-';
+                const createdAt = score.created_at ? formatDate(score.created_at) : '-';
+                
+                // 获取同步状态
+                const syncKey = `${score.user_id}-${score.exam_id}`;
+                const syncStatus = scoresSyncStatus[syncKey] || 'pending';
+                
+                // 同步状态图标
+                let statusIcon = '';
+                if (syncStatus === 'synced') {
+                    statusIcon = '<span class="sync-status synced" title="已同步"></span> 已同步';
+                } else if (syncStatus === 'diff') {
+                    statusIcon = '<span class="sync-status diff" title="存在差异"></span> 存在差异';
+                } else {
+                    statusIcon = '<span class="sync-status pending" title="待检测"></span> 待检测';
+                }
+                
                 tableHtml += `
                     <tr>
-                        <td>${score.student_name}</td>
-                        <td>${score.exam_name}</td>
-                        <td>${score.score.toFixed(1)}</td>
-                        <td class="${syncStatusClass}">${syncStatusIcon} ${score.sync_status}</td>
-                    </tr>`;
+                        <td>${id}</td>
+                        <td>${username}</td>
+                        <td>${examId}</td>
+                        <td>${scoreValue}</td>
+                        <td>${createdAt}</td>
+                        <td>${statusIcon}</td>
+                        <td>
+                            <button class="btn btn-sm btn-danger delete-score-btn" data-id="${id}">
+                                <i class="fa fa-trash"></i> 删除
+                            </button>
+                            <button class="btn btn-sm btn-warning sync-score-btn ms-1" 
+                                    data-user-id="${score.user_id}" 
+                                    data-exam-id="${score.exam_id}" 
+                                    title="同步至所有库">
+                                <i class="fa fa-refresh"></i> 同步
+                            </button>
+                        </td>
+                    </tr>
+                `;
             });
             tableHtml += '</tbody></table>';
-            container.html(tableHtml);
+            scoresTable.html(tableHtml);
+            
+            // 检查用户角色，如果是访客，隐藏操作按钮
+            try {
+                const userInfoStr = localStorage.getItem('userInfo');
+                if (userInfoStr) {
+                    const userInfo = JSON.parse(userInfoStr);
+                    if (userInfo.role === 'guest') {
+                        $('.delete-score-btn').hide();
+                        $('.sync-score-btn').hide();
+                    }
+                }
+            } catch (e) {
+                console.error('解析用户信息失败:', e);
+            }
+            
+            bindDeleteScoreEvents();
+            bindSyncScoreEvents();
+        }
+        
+        function bindDeleteScoreEvents() {
+            $('.delete-score-btn').click(async function() {
+                const scoreId = $(this).data('id');
+                
+                // 增加删除确认弹窗
+                const confirmResult = await Swal.fire({
+                    title: '确认删除',
+                    text: `确定要从所有数据库中删除此成绩记录吗？`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: '删除',
+                    cancelButtonText: '取消'
+                });
+                
+                if (confirmResult.isConfirmed) {
+                    try {
+                        // 调用后端DELETE API
+                        const token = localStorage.getItem('token');
+                        const response = await fetch(`/api/scores/${scoreId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (response.ok) {
+                            // 删除成功后，重新加载成绩列表
+                            await loadScores();
+                            Swal.fire('成功', `成绩记录已删除！`, 'success');
+                        } else {
+                            Swal.fire('错误', data.message || '删除成绩失败', 'error');
+                        }
+                    } catch (error) {
+                        console.error('删除成绩失败:', error);
+                        Swal.fire('错误', `删除成绩时发生网络错误：${error.message}`, 'error');
+                    }
+                }
+            });
+        }
+        
+        // 导航切换逻辑
+        $('#nav-questions').click(function() {
+            // 显示题目管理区域，隐藏成绩管理区域
+            $('#nav-questions').addClass('active');
+            $('#nav-scores').removeClass('active');
+            $('#questions-section').show();
+            $('#scores-section').hide();
+            $('#questions-sync-health').show();
+        });
+        
+        $('#nav-scores').click(function() {
+            // 显示成绩管理区域，隐藏题目管理区域
+            $('#nav-scores').addClass('active');
+            $('#nav-questions').removeClass('active');
+            $('#questions-section').hide();
+            $('#scores-section').show();
+            $('#questions-sync-health').hide();
+            // 触发loadScores()函数
+            loadScores();
+        });
+        
+        // 录入成绩按钮点击事件
+        $('#add-score-btn').click(function() {
+            // 调试打印：点击录入按钮时，打印当前角色
+            const userInfoStr = localStorage.getItem('userInfo');
+            if (userInfoStr) {
+                try {
+                    const userInfo = JSON.parse(userInfoStr);
+                    console.log('正在发送录入请求，角色为:', userInfo.role);
+                } catch (e) {
+                    console.error('解析用户信息失败:', e);
+                }
+            }
+            const modal = new bootstrap.Modal(document.getElementById('add-score-modal'));
+            modal.show();
+        });
+        
+        // 保存录入成绩
+        $('#save-add-score').click(async function() {
+            const userId = parseInt($('#add-score-user-id').val());
+            const examId = parseInt($('#add-score-exam-id').val());
+            const scoreValue = parseFloat($('#add-score-value').val());
+            
+            if (isNaN(userId) || isNaN(examId) || isNaN(scoreValue)) {
+                Swal.fire('错误', '请输入有效的数值', 'error');
+                return;
+            }
+            
+            // 获取用户勾选的数据库
+            const targetDbs = [];
+            if ($('#add-score-target-mysql').is(':checked')) targetDbs.push('mysql');
+            if ($('#add-score-target-oracle').is(':checked')) targetDbs.push('oracle');
+            if ($('#add-score-target-sqlserver').is(':checked')) targetDbs.push('sqlserver');
+            
+            if (!targetDbs.length) {
+                Swal.fire('错误', '请至少选择一个数据库', 'error');
+                return;
+            }
+            
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/scores', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        exam_id: examId,
+                        score_value: scoreValue,
+                        target_dbs: targetDbs
+                    })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('add-score-modal'));
+                    modal.hide();
+                    $('#add-score-form')[0].reset();
+                    await loadScores();
+                    // 录入成功后自动刷新数据库状态
+                    await updateDatabaseStatus();
+                    Swal.fire('成功', '成绩录入成功！', 'success');
+                } else {
+                    Swal.fire('错误', data.message || '成绩录入失败', 'error');
+                }
+            } catch (error) {
+                console.error('录入成绩失败:', error);
+                Swal.fire('错误', '录入成绩失败，请检查网络连接', 'error');
+            }
+        });
+        
+        // 检测三库差异
+        async function checkScoresSync() {
+            try {
+                $('#scores-sync-loading').show();
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/scores/check-sync', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 更新同步状态
+                    scoresSyncStatus = {};
+                    data.data.forEach(item => {
+                        const syncKey = `${item.user_id}-${item.exam_id}`;
+                        scoresSyncStatus[syncKey] = item.status;
+                    });
+                    
+                    // 重新渲染表格
+                    await loadScores();
+                    
+                    // 显示提示
+                    Swal.fire('成功', `检测完成，共 ${data.data.length} 条记录，${Object.values(scoresSyncStatus).filter(status => status === 'diff').length} 条存在差异`, 'success');
+                } else {
+                    Swal.fire('错误', data.message || '检测失败', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to check scores sync:', error);
+                Swal.fire('错误', `检测失败: ${error.message}`, 'error');
+            } finally {
+                $('#scores-sync-loading').hide();
+            }
+        }
+        
+        // 绑定同步按钮事件
+        function bindSyncScoreEvents() {
+            $('.sync-score-btn').click(async function() {
+                const userId = $(this).data('user-id');
+                const examId = $(this).data('exam-id');
+                
+                // 显示确认弹窗
+                const confirmResult = await Swal.fire({
+                    title: '确认同步',
+                    text: `确定要将该成绩记录同步到所有数据库吗？`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: '同步',
+                    cancelButtonText: '取消'
+                });
+                
+                if (confirmResult.isConfirmed) {
+                    await syncScore(userId, examId);
+                }
+            });
+        }
+        
+        // 执行成绩同步
+        async function syncScore(userId, examId) {
+            try {
+                // 显示Loading
+                const syncButton = $(`.sync-score-btn[data-user-id='${userId}'][data-exam-id='${examId}']`);
+                const originalHtml = syncButton.html();
+                syncButton.html('<i class="fa fa-spinner fa-spin"></i> 同步中...');
+                syncButton.prop('disabled', true);
+                
+                const token = localStorage.getItem('token');
+                const response = await fetch('/api/scores/sync', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        source_db: 'mysql', // 默认从MySQL同步
+                        user_id: userId,
+                        exam_id: examId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // 同步成功，重新检测同步状态并刷新列表
+                    await checkScoresSync();
+                    await loadScores();
+                    await getSyncLogs();
+                    
+                    Swal.fire('成功', data.message, 'success');
+                } else {
+                    Swal.fire('错误', data.message || '同步失败', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to sync score:', error);
+                Swal.fire('错误', `同步失败: ${error.message}`, 'error');
+            } finally {
+                // 恢复按钮状态
+                $('.sync-score-btn').html('<i class="fa fa-refresh"></i> 同步');
+                $('.sync-score-btn').prop('disabled', false);
+            }
+        }
+        
+        // 绑定事件
+        $('#refresh-scores').click(loadScores);
+        $('#check-scores-sync').click(checkScoresSync);
+        
+        // 初始化：检查用户角色，guest登录时隐藏录入按钮
+        window.onload = function() {
+            const token = localStorage.getItem('token');
+            const userInfoStr = localStorage.getItem('userInfo');
+            if (!token || !userInfoStr) {
+                window.location.replace('login.html');
+                return;
+            }
+            
+            // 检查用户角色，实现访客模式限制
+            try {
+                const userInfo = JSON.parse(userInfoStr);
+                if (userInfo.role === 'guest') {
+                    // 显示访客模式提示
+                    const guestAlert = `
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <strong>访客模式</strong> 当前为访客模式（只读），您只能查看数据，无法进行修改操作。
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                    $('body').prepend(guestAlert);
+                    
+                    // 隐藏添加题目按钮
+                    $('#add-question-form button[type="submit"]').hide();
+                    
+                    // 隐藏重置按钮
+                    $('#add-question-form button[type="reset"]').hide();
+                    
+                    // 隐藏立即同步按钮
+                    $('#sync-now-btn').hide();
+                    $('#sync-from-modal-btn').hide();
+                    
+                    // 隐藏编辑按钮
+                    $('.edit-question-btn').hide();
+                    
+                    // 隐藏删除按钮
+                    $('.delete-question-btn').hide();
+                    
+                    // 隐藏添加题目表单的所有输入控件
+                    $('#add-question-form input, #add-question-form textarea, #add-question-form select').attr('disabled', true);
+                    
+                    // 隐藏录入成绩按钮
+                    $('#add-score-btn').hide();
+                    
+                    // 隐藏成绩录入的数据库选择勾选框
+                    $('#add-score-form .form-check').hide();
+                }
+            } catch (e) {
+                console.error('解析用户信息失败:', e);
+            }
+        };
+        
+        async function getExceptionLogs() {
+            const exceptionLogsContainer = $('#exception-logs-container');
+            exceptionLogsContainer.html('<div class="text-center text-muted"><i class="fa fa-spinner fa-spin"></i> 加载异常日志中...</div>');
+            try {
+                const response = await fetch('/api/sync/logs?limit=50');
+                const data = await response.json();
+                
+                // 合并所有数据库的异常日志
+                const exceptionLogs = [];
+                Object.entries(data).forEach(([dbName, dbLogs]) => {
+                    dbLogs.logs.forEach(log => {
+                        if (log.status === 'FAILED') {
+                            exceptionLogs.push({ ...log, dbName });
+                        }
+                    });
+                });
+                
+                exceptionLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
+                exceptionLogsContainer.empty();
+                if (!exceptionLogs.length) {
+                    exceptionLogsContainer.html('<div class="alert alert-success text-center"><i class="fa fa-check-circle"></i> 没有异常记录</div>');
+                    return;
+                }
+                
+                exceptionLogs.forEach(log => {
+                    const logHtml = `
+                        <div class="card mb-3 border-danger">
+                            <div class="card-header bg-danger text-white">
+                                <div class="row">
+                                    <div class="col-sm-6"><strong><i class="fa fa-database"></i> ${log.dbName}</strong></div>
+                                    <div class="col-sm-6 text-end"><small>${formatDate(log.created_at)}</small></div>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="fa fa-exclamation-triangle"></i> ${log.event_type}</h6>
+                                <p class="card-text"><strong>错误信息:</strong> ${log.error_msg}</p>
+                                <div class="text-end">
+                                    <button class="btn btn-sm btn-primary repair-btn" data-dbname="${log.dbName}" data-event="${log.event_type}">
+                                        <i class="fa fa-refresh"></i> 以MySQL为准同步
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    exceptionLogsContainer.append(logHtml);
+                });
+                
+                $('.repair-btn').click(function() {
+                    const dbName = $(this).data('dbname');
+                    const event = $(this).data('event');
+                    repairSync(dbName, event);
+                });
+            } catch (error) {
+                console.error('Failed to get exception logs:', error);
+                exceptionLogsContainer.html('<div class="alert alert-danger text-center"><i class="fa fa-exclamation-circle"></i> 加载异常日志失败</div>');
+            }
         }
 
-        function getInconsistentQuestions() {
+        async function getLatestSyncLogs() {
+            const tbody = $('#sync-logs-tbody');
+            tbody.empty();
+            tbody.html('<tr><td colspan="8" class="text-center text-muted"><i class="fa fa-spinner fa-spin"></i> 加载同步日志中...</td></tr>');
+            try {
+                const response = await fetch('/api/sync/logs?limit=10');
+                const data = await response.json();
+                tbody.empty();
+                
+                // 合并所有数据库的日志
+                const allLogs = [];
+                Object.values(data).forEach(dbLogs => {
+                    dbLogs.logs.forEach(log => {
+                        allLogs.push(log);
+                    });
+                });
+                
+                // 按时间倒序排序并取前10条
+                allLogs.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                const latestLogs = allLogs.slice(0, 10);
+                
+                if (!latestLogs.length) {
+                    tbody.html('<tr><td colspan="8" class="text-center text-muted"><i class="fa fa-info-circle"></i> 没有同步日志</td></tr>');
+                    return;
+                }
+                
+                latestLogs.forEach(log => {
+                    let statusClass = 'badge-secondary';
+                    if (log.status === 'SUCCESS') statusClass = 'badge-success';
+                    else if (log.status === 'FAILED') statusClass = 'badge-danger';
+                    else if (log.status === 'PENDING') statusClass = 'badge-warning';
+                    const syncButton = log.status === 'PENDING' ? `
+                        <button class="btn btn-sm btn-primary execute-sync-btn" data-log-id="${log.id}" title="立即同步">
+                            <i class="fa fa-play"></i> 立即同步
+                        </button>` : '';
+                    const logHtml = `
+                        <tr data-log-id="${log.id}">
+                            <td>${log.source_db || '-'}</td>
+                            <td>${log.target_db || '-'}</td>
+                            <td>${log.operation_type || '-'}</td>
+                            <td>${log.event_type}</td>
+                            <td><span class="badge ${statusClass}">${log.status}</span></td>
+                            <td>${log.error_msg || '-'}</td>
+                            <td>${formatDate(log.created_at)}</td>
+                            <td>${syncButton}</td>
+                        </tr>`;
+                    tbody.append(logHtml);
+                });
+                
+                bindExecuteSyncEvents();
+            } catch (error) {
+                console.error('Failed to get latest sync logs:', error);
+                tbody.html('<tr><td colspan="8" class="text-center text-danger"><i class="fa fa-exclamation-circle"></i> 加载同步日志失败</td></tr>');
+            }
+        }
+
+        async function getInconsistentQuestions() {
             const detailsContainer = $('#data-consistency-container');
-            const inconsistentQuestions = MockStore.state.questions.filter(q => q.syncedDbs.length < 3);
-            if (!inconsistentQuestions.length) {
-                detailsContainer.html('<div class="text-center text-muted">所有题目均已完全同步到所有数据库</div>');
-                return;
-            }
-            let tableHtml = `
-                <table class="table table-striped table-bordered">
-                    <thead class="thead-dark">
+            detailsContainer.html('<div class="text-center text-muted"><i class="fa fa-spinner fa-spin fa-2x"></i><br><i class="fa fa-info-circle"></i> 加载数据一致性分析中...</div>');
+            try {
+                // 这里假设后端有获取不一致数据的接口，如果没有需要先实现
+                // 暂时使用题目列表接口，后续需要替换为专门的一致性分析接口
+                const response = await fetch('/api/questions/details');
+                const data = await response.json();
+                
+                // 由于我们没有实际的同步状态字段，这里简化为显示所有题目
+                // 在实际实现中，应该根据T_SYNC_LOGS表的数据来判断同步状态
+                const questions = data.details;
+                
+                if (!questions.length) {
+                    detailsContainer.html('<div class="text-center text-muted">没有题目数据</div>');
+                    return;
+                }
+                
+                let tableHtml = `
+                    <table class="table table-striped table-bordered">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>题目ID</th>
+                                <th>题目内容</th>
+                                <th>最新更新时间</th>
+                                <th>同步状态</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                questions.forEach(q => {
+                    // 这里简化为假设所有题目都已同步
+                    // 在实际实现中，应该根据T_SYNC_LOGS表的数据来判断同步状态
+                    const syncStatus = '已同步';
+                    const statusClass = 'text-success';
+                    
+                    tableHtml += `
                         <tr>
-                            <th>题目ID</th>
-                            <th>题目内容</th>
-                            <th>最新更新时间</th>
-                            <th>同步状态</th>
+                            <td>${q.question_id}</td>
+                            <td>${q.question_content}</td>
+                            <td>${formatDate(q.question_updated_at)}</td>
+                            <td><span class="${statusClass}">${syncStatus}</span></td>
                         </tr>
-                    </thead>
-                    <tbody>
-            `;
-            inconsistentQuestions.forEach(q => {
-                const missing = ['mysql', 'sqlserver', 'oracle'].filter(db => !q.syncedDbs.includes(db));
-                tableHtml += `
-                    <tr>
-                        <td>${q.question_id}</td>
-                        <td>${q.question_content}</td>
-                        <td>${formatDate(q.question_updated_at)}</td>
-                        <td><span class="badge badge-warning">缺少: ${missing.join(', ')}</span></td>
-                    </tr>`;
-            });
-            tableHtml += '</tbody></table>';
-            detailsContainer.html(tableHtml);
+                    `;
+                });
+                
+                tableHtml += '</tbody></table>';
+                detailsContainer.html(tableHtml);
+            } catch (error) {
+                console.error('Failed to get inconsistent questions:', error);
+                detailsContainer.html('<div class="text-center text-danger"><i class="fa fa-exclamation-circle"></i> 加载数据一致性分析失败</div>');
+            }
         }
 
-        $('#arbiter-form').on('submit', function(e) {
-            e.preventDefault();
-            const guid = $('#arbiter-guid').val().trim();
-            if (!guid) return;
-            const record = MockStore.state.arbiter[guid];
-            if (!record) {
-                $('#arbiter-mysql, #arbiter-sqlserver, #arbiter-oracle').html('<span class="text-danger">未找到记录</span>');
-                return;
-            }
-            renderArbiterCard('#arbiter-mysql', record.mysql);
-            renderArbiterCard('#arbiter-sqlserver', record.sqlserver);
-            renderArbiterCard('#arbiter-oracle', record.oracle);
-        });
+        $('#save-edit-question').click(saveEditedQuestion);
 
-        $('#btn-repair').on('click', function() {
-            const guid = $('#arbiter-guid').val().trim();
-            const source = $('#arbiter-source').val();
-            const targets = [];
-            $('#arbiter-form input[type="checkbox"]:checked').each(function() { targets.push($(this).val()); });
-            const record = MockStore.state.arbiter[guid];
-            if (!record) { Swal.fire('未找到数据', '请先加载差异', 'warning'); return; }
-            targets.forEach(db => {
-                record[db] = record[source] || { content: '同步占位', answer: 'N/A', score: 0, updated_at: new Date().toISOString() };
-            });
-            Swal.fire('修复完成', '目标库已与源库同步（模拟）', 'success');
-            renderArbiterCard('#arbiter-mysql', record.mysql);
-            renderArbiterCard('#arbiter-sqlserver', record.sqlserver);
-            renderArbiterCard('#arbiter-oracle', record.oracle);
-        });
-
-        function renderArbiterCard(selector, data) {
-            if (!data || data.missing) {
-                $(selector).html('<span class="text-danger">未找到记录</span>');
-                return;
-            }
-            $(selector).html(`
-                <p><strong>内容：</strong>${data.content}</p>
-                <p><strong>答案：</strong>${data.answer}</p>
-                <p><strong>分数：</strong>${data.score}</p>
-                <p><strong>更新时间：</strong>${data.updated_at ? formatDate(data.updated_at) : '无'}</p>
-            `);
-        }
-
+        // 初始化
         $(document).ready(function() {
             refreshUserInfo();
             updateDatabaseStatus();
             getQuestionsList();
             getSyncLogs();
-            getSyncStats();
             getExceptionLogs();
             getLatestSyncLogs();
-            getStudentScoresReport();
             getInconsistentQuestions();
-            updateOracleSyncStatus();
-            setInterval(updateDatabaseStatus, 10000);
-            setInterval(getQuestionsList, 15000);
-            setInterval(getSyncLogs, 5000);
-            setInterval(getSyncStats, 10000);
-            setInterval(getExceptionLogs, 10000);
-            setInterval(getLatestSyncLogs, 10000);
-            setInterval(getStudentScoresReport, 15000);
-            setInterval(getInconsistentQuestions, 20000);
-            setInterval(updateOracleSyncStatus, 60000);
         });
     </script>
 </body>

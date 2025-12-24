@@ -91,6 +91,10 @@ SessionLocal = {
 def init_db():
     """初始化数据库结构（在SQLite测试模式下使用）。"""
     for engine in engines.values():
+        # 物理删除旧表，彻底解决表结构不匹配问题
+        with engine.connect() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS T_SYNC_LOGS"))
+        # 重新创建表结构
         Base.metadata.create_all(bind=engine)
         if not IS_SQLITE_MODE and "oracle" in engine.url.drivername:
             _init_oracle_sequences(engine)
@@ -164,7 +168,7 @@ def _ensure_schema(engine):
 def check_connectivity() -> Dict[str, Dict[str, str]]:
     """Check connectivity for all configured databases and return status map."""
 
-    results: Dict[str, Dict[str, str]] = {}
+    results: Dict[str, Dict[str, str]] = {} 
     for name, engine in engines.items():
         try:
             _ensure_schema(engine)
@@ -189,8 +193,88 @@ def _print_connectivity_table(results: Dict[str, Dict[str, str]]):
     def fmt_row(row):
         return " | ".join(str(cell).ljust(width) for cell, width in zip(row, col_widths))
 
-    separator = "-+-".join("-" * width for width in col_widths)
+    separator = "-+-|".join("-" * width for width in col_widths)
     print(fmt_row(headers))
     print(separator)
     for row in rows:
         print(fmt_row(row))
+
+
+def init_questions_data():
+    """初始化T_QUESTIONS表数据：清空旧数据并插入初始题目"""
+    from uuid import uuid4
+    from .models import Question
+    
+    # 初始题目数据
+    questions_data = [
+        {
+            "content": "下列哪个是Python的正确注释方式？",
+            "answer": "# 这是单行注释",
+            "score": 10.0
+        },
+        {
+            "content": "SQL中用于查询数据的关键字是？",
+            "answer": "SELECT",
+            "score": 10.0
+        },
+        {
+            "content": "HTTP协议中用于请求资源的常用方法有哪些？",
+            "answer": "GET, POST, PUT, DELETE",
+            "score": 15.0
+        },
+        {
+            "content": "什么是ORM框架？",
+            "answer": "对象关系映射框架，用于在关系数据库和面向对象编程语言之间建立映射",
+            "score": 15.0
+        },
+        {
+            "content": "简述RESTful API的设计原则",
+            "answer": "使用HTTP方法、资源标识符、无状态通信、统一接口等",
+            "score": 20.0
+        },
+        {
+            "content": "Python中列表和元组的主要区别是什么？",
+            "answer": "列表是可变的，元组是不可变的",
+            "score": 10.0
+        },
+        {
+            "content": "什么是事务？",
+            "answer": "数据库操作的一个执行单元，要么全部成功，要么全部失败",
+            "score": 10.0
+        },
+        {
+            "content": "简述CORS的作用",
+            "answer": "跨域资源共享，允许浏览器向不同源的服务器发送请求",
+            "score": 10.0
+        }
+    ]
+    
+    for db_name, session_factory in SessionLocal.items():
+        try:
+            session = session_factory()
+            
+            # 清空T_QUESTIONS表
+            session.execute(text("DELETE FROM T_QUESTIONS"))
+            session.commit()
+            print(f"[{db_name}] 已清空T_QUESTIONS表旧数据")
+            
+            # 插入新数据
+            inserted_count = 0
+            for q_data in questions_data:
+                question = Question(
+                    guid=str(uuid4()),
+                    content=q_data["content"],
+                    answer=q_data["answer"],
+                    score=q_data["score"]
+                )
+                session.add(question)
+                inserted_count += 1
+            
+            session.commit()
+            print(f"[{db_name}] 成功插入{inserted_count}条题目数据")
+            
+        except Exception as e:
+            session.rollback()
+            print(f"[{db_name}] 初始化数据失败: {str(e)}")
+        finally:
+            session.close()

@@ -53,8 +53,8 @@ class Score(Base):
     user_id = Column(Integer, ForeignKey('T_USERS.id'), nullable=False)
     exam_id = Column(Integer, ForeignKey('T_EXAMS.id'), nullable=False)
     score_value = Column(Float, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now())
 
 class SyncLog(Base):
     __tablename__ = 'T_SYNC_LOGS'

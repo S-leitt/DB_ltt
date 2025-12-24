@@ -13,7 +13,7 @@
    ```bash
    uvicorn app.main:app --reload --port 8006
    ```
-4. 浏览器访问 `http://127.0.0.1:8006/login.html`，默认账户 `admin/admin123`。首次启动会自动建表、自检连接并初始化 Oracle 序列/触发器。
+4. 浏览器访问 `http://127.0.0.1:8006/login.html`  ，默认账户 `admin/admin123`。首次启动会自动建表、自检连接并初始化 Oracle 序列/触发器。
 
 ## 功能概览
 - 三库同步（MySQL、SQL Server、Oracle）与健康检查。
